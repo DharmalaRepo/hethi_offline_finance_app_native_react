@@ -3,11 +3,24 @@
 # dependencies
 node_modules/
 
+# Build artifacts
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+.expo-shared/
+.idea/
+.vscode/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
 
 # Native
 .kotlin/
@@ -18,6 +31,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Android / iOS build files
+android/app/build/
+ios/build/
+ios/Pods/
+*.keystore
+
 # Metro
 .metro-health-check*
 
@@ -27,7 +46,6 @@ yarn-debug.*
 yarn-error.*
 
 # macOS
-.DS_Store
 *.pem
 
 # local env files
@@ -35,3 +53,4 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
