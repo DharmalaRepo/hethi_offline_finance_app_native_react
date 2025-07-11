@@ -6,7 +6,7 @@ export interface Transaction {
   categoryId: string;
   subCategoryId?: string;
   personId: string;
-  accountId: string;
+  accountId?: string;
   note?: string;
   isReversible?: boolean;
   isSettled?: boolean;

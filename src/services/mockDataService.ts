@@ -101,32 +101,6 @@ export const addSubCategory = async (
   return newSubCategory;
 };
 
-export const addAccount = async ({
-  name,
-  bankName = '',
-  personalName = 'SELF',
-}: {
-  name: string;
-  bankName?: string;
-  personalName?: string;
-}): Promise<Account> => {
-  try {
-    const accounts = await getAccounts();
-    const newAccount: Account = {
-      id: uuid.v4().toString(),
-      name,
-      bankName,
-      personalName,
-    };
-    accounts.push(newAccount);
-    await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts));
-    return newAccount;
-  } catch (error) {
-    console.error('Error saving account:', error);
-    throw error;
-  }
-};
-
 export const getPersons = async (): Promise<Person[]> => {
   const data = await AsyncStorage.getItem(PERSON_KEY);
   return data ? JSON.parse(data) : [];

@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import CategoryModal from '../components/CategoryModal';
 import SubcategoryModal from '../components/SubcategoryModal';
+import { reloadConfig } from '../../utils/configLoader'; // or wherever it's defined
 
 export interface Category {
   id: string;
@@ -44,6 +45,12 @@ const ManageCategoriesScreen = () => {
   useEffect(() => {
     applySearchFilterSort();
   }, [searchText, categories, sortAsc]);
+
+  const reloadConfig = async () => {
+      setCategories(await getAllCategories());
+      setPersons(await getAllPersons());
+      setAccounts(await getAccounts());
+    };
 
   const loadCategories = async () => {
     const data = await AsyncStorage.getItem('categories');
@@ -155,6 +162,36 @@ const ManageCategoriesScreen = () => {
 
   return (
     <View style={styles.container}>
+
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}>Manage Categories</Text>
+      <TouchableOpacity
+              onPress={reloadConfig}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#007bff',
+                borderRadius: 6,
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                backgroundColor: '#e6f0ff',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: 'bold',
+                  color: '#007bff',
+                  marginRight: 6,
+                }}
+              >
+                ⟳
+              </Text>
+              <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
+            </TouchableOpacity>
+    </View>
+
       <TextInput
         placeholder="Search categories or subcategories..."
         style={styles.searchBox}

@@ -6,7 +6,7 @@ import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import { SubCategory } from '../models/SubCategory';
 import { Transaction } from '../models/Transaction';
-import { getCategories, getPersons, getAllCategories, getAllPersons, getAccounts, addCategory, addSubCategory, addPerson, addAccount, saveTransaction } from '../services/mockDataService';
+import { getCategories, getPersons, getAllCategories, getAllPersons, getAccounts, addCategory, addSubCategory, addPerson, saveTransaction } from '../services/mockDataService';
 import { showToast, validateTransactionData, autoDetectFromNotes } from '../utils/transactionUtils';
 import * as mockDataService from '../services/mockDataService';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +26,6 @@ const LogTransactionForm = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [subCategory, setSubCategory] = useState<SubCategory | null>(null);
   const [person, setPerson] = useState<Person | null>(null);
@@ -48,10 +47,11 @@ const LogTransactionForm = () => {
   const [newPersonName, setNewPersonName] = useState('');
   const [showPersonList, setShowPersonList] = useState(false);
 
+  const [isForFromOrToPerson, setIsForFromOrToPerson] = useState(false);
+
   const reloadConfig = async () => {
     setCategories(await getAllCategories());
     setPersons(await getAllPersons());
-    setAccounts(await getAccounts());
   };
 
   useEffect(() => {
@@ -147,26 +147,6 @@ const openSubCategoryPicker = async () => {
   }
 };
 
-const openPersonPicker = async () => {
-  const name = prompt('Enter person name');
-  if (!name) return;
-  const newPerson = { id: uuid.v4().toString(), name };
-  await addPerson(newPerson);
-  setPerson(newPerson);
-  reloadConfig();
-  showToast('success', 'Person added');
-};
-
-const openAccountPicker = async () => {
-  const name = prompt('Enter account name');
-  if (!name) return;
-  const newAcc = { id: uuid.v4().toString(), name, bankName: '', personalName: 'SELF' };
-  await addAccount(newAcc);
-  setAccount(newAcc);
-  reloadConfig();
-  showToast('success', 'Account added');
-};
-
 // ✅ SAVE HANDLER
 const handleSaveTransaction = async () => {
     try {
@@ -211,6 +191,11 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
     setDueDate(selectedDate);
   };
 
+  const handleAddFromOrToPerson = () => {
+  setShowAddPersonModal(true);
+  setIsForFromOrToPerson(true); // new state to track which field is being set
+};
+
   const handleSave = async () => {
     try {
       const validation = validateTransactionData({
@@ -249,16 +234,6 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
         showToast('warning', 'No person selected. Using SELF.');
       }
 
-      if (!finalAccount) {
-        finalAccount = {
-          id: 'cash',
-          name: 'CASH',
-          bankName: '',
-          personalName: 'SELF',
-        };
-        showToast('warning', 'No account selected. Using CASH.');
-      }
-
       // Step 2: Construct Transaction Object
       const transaction: Transaction = {
         id: uuid.v4().toString(),
@@ -268,7 +243,7 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
         categoryId: finalCategory.id,
         subCategoryId: finalSubCategory.id,
         personId: finalPerson.id,
-        accountId: finalAccount.id,
+        accountId: finalAccount?.id,
         note,
         isReversible,
         dueDate:
@@ -367,8 +342,7 @@ onPress: async () => {
       bankName: 'Unknown',
       personalName: 'SELF',
     };
-    const savedAcc = await addAccount(newAcc);
-    setAccount(savedAcc);
+ 
     reloadConfig();
     showToast('success', 'Account added');
   }
@@ -411,7 +385,7 @@ onPress: async () => {
         >
           ⟳
         </Text>
-        <Text style={{ fontSize: 14, color: '#007bff' }}>Config</Text>
+        <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
       </TouchableOpacity>
     </View>
 
@@ -598,15 +572,6 @@ onPress: async () => {
         </View>
       )}
 
-      {/* Account */}
-      <Text style={commonStyles.label}>Account</Text>
-      <TouchableOpacity style={commonStyles.dropdown} onPress={openAccountPicker}>
-        <View style={commonStyles.row}>
-          <Text>{account?.name || 'CASH (Tap to add account)'}</Text>
-          {!account && <Text style={commonStyles.warningIcon}>⚠️</Text>}
-        </View>
-      </TouchableOpacity>
-
       {/* Reversible Transaction Toggle */}
       <View style={commonStyles.checkboxRow}>
         <Checkbox
@@ -632,7 +597,7 @@ onPress: async () => {
 
           {/* From/To Person */}
           <Text style={commonStyles.label}>From / To Person</Text>
-          <TouchableOpacity style={commonStyles.dropdown} onPress={openPersonPicker}>
+          <TouchableOpacity style={commonStyles.dropdown} onPress={handleAddFromOrToPerson}>
             <View style={commonStyles.row}>
               <Text>{fromOrToPerson?.name || 'Select person involved'}</Text>
               {!fromOrToPerson && <Text style={commonStyles.warningIcon}>⚠️</Text>}
