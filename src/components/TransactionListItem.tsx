@@ -22,7 +22,18 @@ const TransactionListItem: React.FC<Props> = ({
 
   return (
     <View style={styles.row}>
-      <View style={styles.dot} />
+      <View
+        style={[
+          styles.dot,
+          {
+            backgroundColor: transaction.isSettled
+              ? transaction.isReversible
+                ? '#f44336' // 🔴 Red for unsettled reversible
+                : '#4caf50' // ✅ Green for settled reversible
+              : '#2196f3',   // 🔵 Blue for normal
+          },
+        ]}
+      />
       <Text style={styles.cell}>{transaction.date}</Text>
       <Text style={styles.cell}>{categoryName}</Text>
       <Text style={styles.cell}>{subCategoryName || ''}</Text>

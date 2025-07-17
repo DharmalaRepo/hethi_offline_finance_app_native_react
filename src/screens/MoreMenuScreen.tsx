@@ -8,10 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 const menuItems = [
   { label: 'PIN Protection', icon: 'lock-closed-outline', screen: 'SetPin' },
   { label: 'Reports', icon: 'folder-outline', screen: 'Reports' },
-  { label: 'Monthly Opening Balances', icon: 'calendar-outline', screen: 'MonthlyOpeningBalance' },
+  { label: 'Balance Sheets', icon: 'calendar-outline', screen: 'BalanceSheets' },
   { label: 'Reversible Transactions', icon: 'swap-horizontal-outline', screen: 'ReversibleTransactions' },
   { label: 'Current Balances', icon: 'cash-outline', screen: 'CurrentBalances' },
   { label: 'Recurring Payments', icon: 'repeat-outline', screen: 'RecurringPayments' },
+  { label: 'Data Mnmt', icon: 'cloud-download-outline', screen: 'DataManagement' },
   { label: 'Import Data', icon: 'cloud-download-outline', screen: 'ImportData' },
   { label: 'Export Data', icon: 'cloud-upload-outline', screen: 'ExportData' },
   { label: 'Settings / Setup Wizard', icon: 'settings-outline', screen: 'SetupWizard' },

@@ -17,7 +17,7 @@ const Tab = createBottomTabNavigator();
 const BottomTabNavigator = () => {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route, }) => ({
         headerShown: false,
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
@@ -25,9 +25,6 @@ const BottomTabNavigator = () => {
           switch (route.name) {
             case 'Dashboard':
               iconName = 'home-outline';
-              break;
-            case 'Add':
-              iconName = 'add-circle-outline';
               break;
             case 'Log':
               iconName = 'add-circle-outline';
@@ -51,7 +48,6 @@ const BottomTabNavigator = () => {
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Add" component={AddTransactionScreen} />
       <Tab.Screen name="Log" component={LogTransactionScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Persons" component={ManagePersonsScreen} />

@@ -17,7 +17,7 @@ import { Account } from '../models/Account';
 import { CategoryService } from '../features/categories/CategoryService';
 import { PersonService } from '../features/persons/PersonService';
 import { AccountService } from '../features/balances/AccountService';
-import { updateTransaction, deleteTransaction } from '../services/transactionService';
+import { updateTransaction, deleteTransaction } from '../services/mockDataService';
 
 interface Props {
   visible: boolean;
@@ -54,7 +54,7 @@ const TransactionEditDialog: React.FC<Props> = ({
   };
 
   const handleSave = async () => {
-    await updateTransaction(editedTxn.id, editedTxn);
+    await updateTransaction( editedTxn);
     onUpdate();
     onClose();
   };
@@ -119,7 +119,7 @@ const TransactionEditDialog: React.FC<Props> = ({
           onValueChange={(val) => handleChange('accountId', val)}
           value={editedTxn.accountId}
           items={accounts.map((a) => ({
-            label: `${a.personalName} - ${a.name}`,
+            label: `${a.personId} - ${a.accountTypeOrName}`,
             value: a.id,
           }))}
         />

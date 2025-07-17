@@ -1,6 +1,6 @@
-export interface MonthlyOpeningBalance {
+export interface MonthlyClosingBalance {
   id: string;
-  month: string; // 'MM'
+  month: string;
   year: string;
   personId: string;
   accountId: string;

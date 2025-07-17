@@ -1,7 +1,7 @@
 export interface Account {
   id: string;
-  personId: string; // e.g., "Dad's Account"
-  currentBalance?: number;
+  personId: string;
+  accountTypeOrName: string;  // CASH or ICICI or HDFC or UPI
   notes?: string;
-  bankName?: string;
+  isTestData?: boolean;
 }

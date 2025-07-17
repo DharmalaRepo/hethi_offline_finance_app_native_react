@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Person } from '../models/Person';
 
 
@@ -53,10 +53,10 @@ export default function TransactionsScreen() {
   }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
-      loadTransactions();
-    }, [])
-  );
+     useCallback(() => {
+       reloadData();
+     }, [])
+   );
 
   useEffect(() => {
     const loadPersons = async () => {
@@ -73,6 +73,13 @@ export default function TransactionsScreen() {
   };
   loadCategories();
 }, []);
+
+ const reloadData = async () => {
+      setCategories(await getCategories());
+       loadTransactions();
+       loadCategoryMaps();
+       loadPersons();
+    };
 
   const loadTransactions = async () => {
     const txns = await getAllTransactions();
@@ -223,9 +230,17 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
       {/* Header Title */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>Transactions</Text>
-        <TouchableOpacity onPress={loadTransactions} style={styles.reloadIcon}>
-          <Ionicons name="refresh" size={22} color="#007bff" />
-        </TouchableOpacity>
+        <TouchableOpacity
+                      onPress={loadTransactions}
+                      style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#007bff',
+                        borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#e6f0ff', }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6, }}>
+                        ⟳
+                      </Text>
+                      <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
+              </TouchableOpacity>
+
       </View>
 
       {/* Search Row */}
@@ -429,7 +444,7 @@ const styles = StyleSheet.create({
   },
 
   applyBtn: {
-    backgroundColor: '#007bff',
+    backgroundColor: 'white',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 6,
@@ -437,7 +452,7 @@ const styles = StyleSheet.create({
   },
 
   cancelBtn: {
-    backgroundColor: '#6c757d',
+    backgroundColor: 'white',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 6,

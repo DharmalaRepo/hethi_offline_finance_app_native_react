@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,23 +10,17 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import CategoryModal from '../components/CategoryModal';
-import SubcategoryModal from '../components/SubcategoryModal';
-import { reloadConfig } from '../../utils/configLoader'; // or wherever it's defined
+import { Category } from '../models/Category';
+import { SubCategory } from '../models/SubCategory';
+import { useFocusEffect } from '@react-navigation/native';
+import { getCategories } from '../services/mockDataService';
+import SubcategoryModal from '../components/SubcategoryModal'; 
+import CategoryModal from '../components/CategoryModal'; 
 
-export interface Category {
-  id: string;
-  name: string;
-  subcategories: Subcategory[];
-}
-
-export interface Subcategory {
-  id: string;
-  name: string;
-}
 
 const ManageCategoriesScreen = () => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [searchText, setSearchText] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
@@ -36,7 +30,7 @@ const ManageCategoriesScreen = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [showSubModal, setShowSubModal] = useState(false);
-  const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
+  const [editingSubcategory, setEditingSubcategory] = useState<SubCategory | null>(null);
 
   useEffect(() => {
     loadCategories();
@@ -46,11 +40,21 @@ const ManageCategoriesScreen = () => {
     applySearchFilterSort();
   }, [searchText, categories, sortAsc]);
 
-  const reloadConfig = async () => {
-      setCategories(await getAllCategories());
-      setPersons(await getAllPersons());
-      setAccounts(await getAccounts());
-    };
+  useFocusEffect(
+    useCallback(() => {
+      reloadConfig();
+    }, [])
+  );
+
+const reloadConfig = async () => {
+  const fetchedCategories = await getCategories();
+  const allSubCategories = fetchedCategories.flatMap(cat =>
+    (cat.subcategories || []).map(sub => ({ ...sub, categoryId: cat.id }))
+  );
+
+  setCategories(fetchedCategories);
+  setSubCategories(allSubCategories);
+};
 
   const loadCategories = async () => {
     const data = await AsyncStorage.getItem('categories');
@@ -104,7 +108,7 @@ const ManageCategoriesScreen = () => {
       cat.id === selectedCategory.id
         ? {
             ...cat,
-            subcategories: [...cat.subcategories, { id: Date.now().toString(), name }],
+            subcategories: [...(cat.subcategories ?? []), { id: Date.now().toString(), name, categoryId: selectedCategory.id, }]
           }
         : cat
     );
@@ -117,7 +121,7 @@ const ManageCategoriesScreen = () => {
       if (cat.id !== selectedCategory.id) return cat;
       return {
         ...cat,
-        subcategories: cat.subcategories.map((sub) =>
+        subcategories: (cat.subcategories ?? []).map((sub) =>
           sub.id === editingSubcategory.id ? { ...sub, name } : sub
         ),
       };
@@ -132,7 +136,7 @@ const ManageCategoriesScreen = () => {
       if (cat.id !== selectedCategory.id) return cat;
       return {
         ...cat,
-        subcategories: cat.subcategories.filter((sub) => sub.id !== subcategoryId),
+        subcategories: (cat.subcategories ?? []).filter((sub) => sub.id !== subcategoryId),
       };
     });
     saveCategories(updated);
@@ -151,7 +155,7 @@ const ManageCategoriesScreen = () => {
     const query = searchText.toLowerCase();
     const result = sorted.filter((cat) => {
       const categoryMatch = cat.name.toLowerCase().includes(query);
-      const subcategoryMatch = cat.subcategories.some((sub) =>
+      const subcategoryMatch = cat.subcategories?.some((sub) =>
         sub.name.toLowerCase().includes(query)
       );
       return categoryMatch || subcategoryMatch;
@@ -167,29 +171,14 @@ const ManageCategoriesScreen = () => {
       <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}>Manage Categories</Text>
       <TouchableOpacity
               onPress={reloadConfig}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: '#007bff',
-                borderRadius: 6,
-                paddingVertical: 4,
-                paddingHorizontal: 8,
-                backgroundColor: '#e6f0ff',
-              }}
+              style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#007bff',
+                borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#e6f0ff', }}
             >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: 'bold',
-                  color: '#007bff',
-                  marginRight: 6,
-                }}
-              >
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6, }}>
                 ⟳
               </Text>
               <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
-            </TouchableOpacity>
+      </TouchableOpacity>
     </View>
 
       <TextInput
@@ -245,9 +234,9 @@ const ManageCategoriesScreen = () => {
                 </TouchableOpacity>
               </View>
             </View>
-            {item.subcategories.length > 0 && (
+            {(item.subcategories?.length ?? 0) > 0 && (
               <View style={styles.subcategoryList}>
-                {item.subcategories.map((sub) => (
+                {item.subcategories?.map((sub) => (
                   <Text key={sub.id} style={styles.subText}>
                     • {sub.name}
                   </Text>

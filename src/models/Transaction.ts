@@ -11,7 +11,7 @@ export interface Transaction {
   isReversible?: boolean;
   isSettled?: boolean;
   reverseTransactionId?: string;
-  fromOrToPersonId?: string;
+  fromOrToPersonName?: string;
   dueDate?: string;
   isAutoReverseEntry?: boolean;
   originalTransactionId?: string;
@@ -19,4 +19,5 @@ export interface Transaction {
   recurringId?: string;
   createdAt: string;
   updatedAt?: string;
+  isTestData?: boolean;
 }

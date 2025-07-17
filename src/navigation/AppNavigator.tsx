@@ -1,25 +1,24 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
-import AddTransactionScreen from '../screens/AddTransactionScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
-import ManageCategoriesScreen from '../screens/ManageCategoriesScreen';
-import ManagePersonsScreen from '../screens/ManagePersonsScreen';
+import AddTransactionScreen from '../screens/AddTransactionScreen';
+import SetupWizardScreen from '../screens/SetupWizardScreen';
+import SetPinScreen from '../screens/SetPinScreen';
+import { useThemeContext } from '../components/ThemeContext';
 
-export type RootStackParamList = {
-  Transactions: undefined;
-  AddTransaction: undefined;
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
+  const { navTheme } = useThemeContext(); // 👈 Navigation theme (light/dark)
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <Stack.Navigator initialRouteName="Transactions">
         <Stack.Screen name="Transactions" component={TransactionsScreen} />
         <Stack.Screen name="AddTransaction" component={AddTransactionScreen} />
+        <Stack.Screen name="SetupWizard" component={SetupWizardScreen} />
+        <Stack.Screen name="SetPin" component={SetPinScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

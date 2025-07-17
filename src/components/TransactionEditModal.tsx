@@ -59,6 +59,19 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
     setSubCategories(selectedCategory?.subcategories || []);
   }, [categoryId, categories]);
 
+  useEffect(() => {
+    if (transaction && visible) {
+      setType(transaction.type);
+      setAmount(transaction.amount.toString());
+      setDate(new Date(transaction.date));
+      setNote(transaction.note || '');
+      setCategoryId(transaction.categoryId || '');
+      setSubCategoryId(transaction.subCategoryId || '');
+      setPersonId(transaction.personId || '');
+      setAccountId(transaction.accountId || '');
+    }
+  }, [transaction, visible]);
+
   const handleUpdate = () => {
     const updated: Transaction = {
       ...transaction,

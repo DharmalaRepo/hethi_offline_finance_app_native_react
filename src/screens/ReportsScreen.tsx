@@ -1,38 +1,38 @@
-// ReportsScreen.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
-import ReportsView from './ReportsView';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { getAllTransactions } from '../services/mockDataService';
 import { Transaction } from '../models/Transaction';
-
-
-interface ReportsViewProps {
-  transactions: Transaction[];
-}
-
+import ReportsView from './ReportsView';
 
 const ReportsScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const txs = await getAllTransactions();
-        setTransactions(txs);
-      } catch (err) {
-        console.error('Failed to load transactions:', err);
-      }
+    const fetchTransactions = async () => {
+      const data = await getAllTransactions();
+      setTransactions(data);
+      setLoading(false);
     };
-
-    loadData();
+    fetchTransactions();
   }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#007bff" />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
       {transactions.length > 0 ? (
-        <ReportsView />
+        <ReportsView transactions={transactions} />
       ) : (
-        <Text style={{ textAlign: 'center', marginTop: 50 }}>No transactions found</Text>
+        <Text style={{ textAlign: 'center', marginTop: 50 }}>
+          No transactions found
+        </Text>
       )}
     </View>
   );

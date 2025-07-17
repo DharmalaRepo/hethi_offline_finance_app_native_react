@@ -5,13 +5,19 @@ export interface RecurringPayment {
   id: string;
   title: string;
   amount: number;
+  categoryId: string;
+  subCategoryId: string;
+  personId: string;
+  accountId:string;
+  note:string;
   type: 'income' | 'expense';
   startDate: string; // 'YYYY-MM-DD'
-  repeatEvery: string; // e.g., 'daily', 'weekly', 'monthly'
+  frequency: string; // e.g., 'daily', 'weekly', 'monthly'
   endDate?: string;
   personName?: string;
   transactionTemplate?: any; // Optional future use
   repeatType?: string; // Optional future use
   createdAt: string;
-  completedInstances?: string[]; // track which instances are completed (e.g., ['2025-07-05'])
+  completedInstances?: string[];
+  isTestData?: boolean;
 }

@@ -6,14 +6,14 @@ import { Transaction } from '../models/Transaction';
 import { Account } from '../models/Account';
 import { Category } from '../models/Category';
 import { Person } from '../models/Person';
-import { OpeningBalance } from '../models/MonthlyOpeningBalance';
+import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { RecurringPayment } from '../models/RecurringPayment';
 
 interface Props {
   accounts: Account[];
   categories: Category[];
   persons: Person[];
-  monthlyOpeningBalances: OpeningBalance[];
+  monthlyOpeningBalances: MonthlyOpeningBalance[];
   recurringPayments: RecurringPayment[];
   transactions: Transaction[];
 }
@@ -38,6 +38,7 @@ const DashboardView: React.FC<Props> = ({
   };
 
   return (
+
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Dashboard</Text>
 

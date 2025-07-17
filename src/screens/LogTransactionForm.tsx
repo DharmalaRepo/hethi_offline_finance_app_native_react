@@ -6,7 +6,8 @@ import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import { SubCategory } from '../models/SubCategory';
 import { Transaction } from '../models/Transaction';
-import { getCategories, getPersons, getAllCategories, getAllPersons, getAccounts, addCategory, addSubCategory, addPerson, saveTransaction } from '../services/mockDataService';
+import { getCategories, getPersons, getAllCategories, getAllPersons, getAccounts, addCategory, 
+  addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues } from '../services/mockDataService';
 import { showToast, validateTransactionData, autoDetectFromNotes } from '../utils/transactionUtils';
 import * as mockDataService from '../services/mockDataService';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,8 @@ import {commonStyles} from '../styles/commonStyles';
 import { Checkbox } from 'react-native-paper';
 import { FlatList } from 'react-native';
 import { Modal } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { ToastAndroid } from 'react-native';
 
 
 const LogTransactionForm = () => {
@@ -42,12 +45,14 @@ const LogTransactionForm = () => {
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [fromOrToPerson, setFromOrToPerson] = useState<Person | null>(null);
+  const [fromOrToPersonName, setFromOrToPersonName] = useState<string>('');
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
   const [showPersonList, setShowPersonList] = useState(false);
-
   const [isForFromOrToPerson, setIsForFromOrToPerson] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<Account[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   const reloadConfig = async () => {
     setCategories(await getAllCategories());
@@ -147,44 +152,6 @@ const openSubCategoryPicker = async () => {
   }
 };
 
-// ✅ SAVE HANDLER
-const handleSaveTransaction = async () => {
-    try {
-  const validation = validateTransactionData({
-    type,
-    amount: parseFloat(amount),
-    date: date.toISOString().split('T')[0],
-  });
-
-  if (!validation || !validation.valid) {
-    showToast('error', validation?.message || 'Validation failed');
-    return;
-  }
-
-  const transaction: Transaction = {
-    id: uuid.v4().toString(),
-    type,
-    amount: parseFloat(amount),
-    date: date.toISOString().split('T')[0],
-    categoryId: category?.id || 'misc',
-    subCategoryId: subCategory?.id,
-    personId: person?.id || 'self',
-    accountId: account?.id || 'cash',
-    note,
-    isReversible,
-    dueDate: isReversible && dueDate ? dueDate.toISOString().split('T')[0] : undefined,
-    isSettled: markAsReturned,
-    createdAt: new Date().toISOString(),
-  };
-console.log('[SAVE] Logging transaction before save:', JSON.stringify(transaction, null, 2));
-  await mockDataService.saveTransaction(transaction);
-  showToast('success', 'Transaction saved');
-  resetForm();
-  } catch (error) {
-      console.error('Error saving transaction:', error);
-      showToast('error', 'Failed to save transaction');
-    }
-};
 
   const handleDueDateConfirm = (selectedDate: Date) => {
     setShowDatePicker(false);
@@ -198,39 +165,32 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
 
   const handleSave = async () => {
     try {
-      const validation = validateTransactionData({
-        type,
-        amount: parseFloat(amount),
-        date: date.toISOString().split('T')[0], // YYYY-MM-DD
-      });
+
+          const validation = validateTransactionData({
+            type,
+            amount: parseFloat(amount),
+            date: date.toISOString().split('T')[0], // YYYY-MM-DD
+          });
 
       if (!validation.valid) {
         showToast('error', validation.message ?? 'Something went wrong.');
         return;
       }
 
-      // Step 1: Prepare Fallbacks
-      let finalCategory = category;
-      let finalSubCategory = subCategory;
-      let finalPerson = person;
-      let finalAccount = account;
+      const {
+        fallbackCategory: finalCategory,
+        fallbackSubCategory: finalSubCategory,
+        fallbackPerson: finalPerson,
+        fallbackAccount: finalAccount,
+      } = await getFallbackTransactionValues({ category, subCategory, person, account });
 
       if (!finalCategory) {
-        finalCategory = { id: 'misc', name: 'MISC', subcategories: [] };
         showToast('warning', 'No category selected. Using MISC.');
       }
-
       if (!finalSubCategory) {
-        finalSubCategory = {
-          id: 'misc_sub',
-          name: 'MISC',
-          categoryId: finalCategory.id,
-        };
         showToast('warning', 'No sub-category selected. Using MISC.');
       }
-
       if (!finalPerson) {
-        finalPerson = { id: 'self', name: 'SELF' };
         showToast('warning', 'No person selected. Using SELF.');
       }
 
@@ -240,15 +200,15 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
         type,
         amount: parseFloat(amount),
         date: date.toISOString().split('T')[0],
-        categoryId: finalCategory.id,
-        subCategoryId: finalSubCategory.id,
-        personId: finalPerson.id,
-        accountId: finalAccount?.id,
+        categoryId: category?.id ?? finalCategory?.id ?? '',
+        subCategoryId: subCategory?.id ?? finalSubCategory?.id ?? '',
+        personId: person?.id ?? finalPerson?.id ?? '',
+        accountId: account?.id ?? finalAccount?.id ?? '',
         note,
         isReversible,
         dueDate:
-          isReversible && dueDate ? dueDate.toISOString().split('T')[0] : undefined,
-        fromOrToPersonId: fromOrToPerson?.id,
+        isReversible && dueDate ? dueDate.toISOString().split('T')[0] : undefined,
+        fromOrToPersonName: fromOrToPersonName,
         isSettled: markAsReturned,
         createdAt: new Date().toISOString(),
       };
@@ -258,8 +218,9 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
 
       // Step 4: Save Transaction
       await saveTransaction(transaction);
+      ToastAndroid.show('Transaction saved successfully!', ToastAndroid.SHORT);
       showToast('success', 'Transaction saved successfully');
-
+      console.log('success', 'Transaction saved successfully');
       // Step 5: Reset Form
       resetForm();
     } catch (error) {
@@ -267,6 +228,8 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
       showToast('error', 'Failed to save transaction');
     }
   };
+
+
 
   const resetForm = () => {
     setType('expense');
@@ -279,12 +242,19 @@ console.log('[SAVE] Logging transaction before save:', JSON.stringify(transactio
     setAccount(null);
     setIsReversible(false);
     setDueDate(null);
-    setFromOrToPerson(null);
+    setFromOrToPersonName('');
     setMarkAsReturned(false);
     setShowCategoryList(false);
     setShowSubCategoryList(false);
     setNewSubcategoryName('');
     setShowAddSubcategoryModal(false);
+  };
+
+  const handlePersonChange = (personId: string) => {
+    setSelectedPersonId(personId);
+    const selectedPerson = persons.find(p => p.id === personId);
+    setAvailableAccounts(selectedPerson?.accounts || []);
+    setSelectedAccountId(null); // reset account selection
   };
 
   const handleReversibleToggle = () => {
@@ -352,9 +322,6 @@ onPress: async () => {
 
 
   };
-
-
-
 
   return (
       <>
@@ -534,43 +501,37 @@ onPress: async () => {
           </View>
         )}
 
-      <Text style={commonStyles.label}>Person</Text>
-      <TouchableOpacity
-        style={commonStyles.dropdown}
-        onPress={() => setShowPersonList(prev => !prev)}
-      >
-        <Text>{person?.name || 'SELF (Tap to select/add person)'}</Text>
-      </TouchableOpacity>
 
-      {showPersonList && (
-        <View style={{ maxHeight: 150 }}>
-          <ScrollView nestedScrollEnabled>
-            {persons.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={commonStyles.dropdownItem}
-                onPress={() => {
-                  setPerson(item);
-                  setShowPersonList(false);
-                }}
+         {/* Person 2 */}
+        <Text style={styles.label}>Person</Text>
+              <Picker
+                selectedValue={selectedPersonId}
+                onValueChange={(itemValue) => handlePersonChange(itemValue ?? '')}
               >
-                <Text>{item.name}</Text>
-              </TouchableOpacity>
-            ))}
+                <Picker.Item label="Select Person" value={null} />
+                {persons.map(person => (
+                  <Picker.Item key={person.id} label={person.name} value={person.id} />
+                ))}
+              </Picker>
 
-            {/* Add New Person Button */}
-            <TouchableOpacity
-              style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
-              onPress={() => {
-                setShowAddPersonModal(true);
-                setShowPersonList(false);
-              }}
-            >
-              <Text style={{ fontWeight: 'bold' }}>+ Add New Person</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      )}
+              {availableAccounts.length > 0 && (
+                <>
+                  <Text style={styles.label}>Account</Text>
+                  <Picker
+                    selectedValue={selectedAccountId}
+                    onValueChange={(itemValue) => setSelectedAccountId(itemValue)}
+                  >
+                    <Picker.Item label="Select Account" value={null} />
+                    {availableAccounts.map(acc => (
+                      <Picker.Item
+                        key={acc.id}
+                        label={acc.accountTypeOrName}
+                        value={acc.id}
+                      />
+                    ))}
+                  </Picker>
+                </>
+              )}
 
       {/* Reversible Transaction Toggle */}
       <View style={commonStyles.checkboxRow}>
@@ -597,13 +558,14 @@ onPress: async () => {
 
           {/* From/To Person */}
           <Text style={commonStyles.label}>From / To Person</Text>
-          <TouchableOpacity style={commonStyles.dropdown} onPress={handleAddFromOrToPerson}>
-            <View style={commonStyles.row}>
-              <Text>{fromOrToPerson?.name || 'Select person involved'}</Text>
-              {!fromOrToPerson && <Text style={commonStyles.warningIcon}>⚠️</Text>}
-            </View>
-          </TouchableOpacity>
+          <TextInput
+            value={fromOrToPersonName}
+            onChangeText={setFromOrToPersonName}
+            placeholder="Enter name involved (optional)"
+            style={styles.input}
+          />
 
+        
           {/* Mark as Returned */}
           <View style={commonStyles.checkboxRow}>
             <Checkbox
@@ -710,6 +672,7 @@ onPress: async () => {
             }} />
             <Button title="Add" onPress={async () => {
               const name = newPersonName.trim();
+
               if (!name) {
                 showToast('error', 'Person name cannot be empty');
                 return;
@@ -718,6 +681,7 @@ onPress: async () => {
               const newPerson: Person = {
                 id: uuid.v4().toString(),
                 name,
+                accounts: [], // Add this to satisfy the required field
               };
 
               await addPerson(newPerson);
