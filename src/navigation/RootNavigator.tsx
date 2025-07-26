@@ -1,79 +1,108 @@
-// src/navigation/RootNavigator.tsx
-import React, { useRef, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, Animated, SafeAreaView, Dimensions } from 'react-native';
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Animated, SafeAreaView, Dimensions, Linking } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import BottomTabNavigator from './BottomTabNavigator';
-import { Linking } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TextTicker from 'react-native-text-ticker';
+import BottomTabNavigator from './BottomTabNavigator';
+import LockScreen from '../screens/LockScreen'; // adjust if needed
 import { preloadConfigData } from '../utils/configUtils';
 import { useThemeContext } from '../components/ThemeContext';
+import { RootStackParamList } from './routes';
+import { getAppSettings } from '../services/mockDataService';
+import { useAutoLock } from '../hooks/useAutoLock';
 
 const { width } = Dimensions.get('window');
 
 const RootNavigator = () => {
+  const RootStack = createNativeStackNavigator<RootStackParamList>();
+  const scrollAnim = useRef(new Animated.Value(0)).current;
   const { theme } = useThemeContext();
- const scrollAnim = useRef(new Animated.Value(0)).current;
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
 
- useEffect(() => {
-   preloadConfigData(); // preload categories and persons
- }, []);
+  useAutoLock();
 
- useEffect(() => {
-   const startScrolling = () => {
-     scrollAnim.setValue(0);
-     Animated.loop(
-       Animated.timing(scrollAnim, {
-         toValue: -width, // scroll full screen width
-         duration: 10000,
-         useNativeDriver: true,
-       })
-     ).start();
-   };
+  useEffect(() => {
+    preloadConfigData();
 
-   startScrolling();
- }, []);
+    const checkPinEnabled = async () => {
+      const settings = await getAppSettings();
+      if (settings.pinEnabled) {
+        setInitialRoute('LockScreen');
+      } else {
+        setInitialRoute('MainTabs');
+      }
+    };
+
+    checkPinEnabled();
+  }, []);
+
+  useEffect(() => {
+    const startScrolling = () => {
+      scrollAnim.setValue(0);
+      Animated.loop(
+        Animated.timing(scrollAnim, {
+          toValue: -width,
+          duration: 10000,
+          useNativeDriver: true,
+        })
+      ).start();
+    };
+
+    startScrolling();
+  }, []);
+
+  if (!initialRoute) return null; // or splash screen
 
   return (
     <SafeAreaView style={[styles.safeArea, theme === 'dark' ? styles.darkBackground : styles.lightBackground]}>
-    {/* HEADER */}
-          <View style={styles.header}>
+      {/* HEADER */}
+      <View style={styles.header}></View>
 
-          </View>
+      {/* TICKER */}
       <View style={styles.tickerWrapper}>
-        <Animated.View
-          style={[
-            styles.tickerAnimatedContainer,
-            { transform: [{ translateX: scrollAnim }] },
-          ]}
-        >
-          {/* Duplicated text for seamless loop */}
+        <Animated.View style={[styles.tickerAnimatedContainer, { transform: [{ translateX: scrollAnim }] }]}>
           <Text style={styles.tickerText}>
-            💰 Welcome to HETHI SOLUTIONS - Manage your personal finances effortlessly with care and clarity. 🏛️   💰 Welcome to HETHI SOLUTIONS - Manage your personal finances effortlessly with care and clarity. 🏛️
+            💰 Welcome to HETHI SOLUTIONS - Manage your personal finances (offline) effortlessly with care and clarity. 🏛️
+            💰 Welcome to HETHI SOLUTIONS - Manage your personal finances (offline) effortlessly with care and clarity. 🏛️
           </Text>
         </Animated.View>
       </View>
 
       {/* MAIN NAVIGATION */}
       <View style={styles.content}>
-        <NavigationContainer>
-          <BottomTabNavigator />
-        </NavigationContainer>
+        <RootStack.Navigator initialRouteName={initialRoute}>
+          <RootStack.Screen
+            name="MainTabs"
+            component={BottomTabNavigator}
+            options={{ headerShown: false }}
+          />
+          <RootStack.Screen
+            name="LockScreen"
+            component={LockScreen}
+            options={{ headerShown: false }}
+          />
+        </RootStack.Navigator>
       </View>
-
 
       {/* FOOTER */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          © All rights reserved. <Text style={{ fontWeight: 'bold', color: 'grey'}}>HETHI SOLUTIONS.</Text>
+          © All rights reserved. <Text style={{ fontWeight: 'bold', color: 'grey' }}>HETHI SOLUTIONS.</Text>
         </Text>
-
         <Text style={styles.footerSubText}>
-          By Dharmala Hethi Pranavi Reddy - For queries{' '}
+          By Dharmala Hethi Pranavi Reddy. Email for{' '}
           <Text
             style={styles.emailLink}
-            onPress={() => Linking.openURL('mailto:shivaprasad1547@gmail.com')}
+            onPress={() => Linking.openURL('mailto:hethi.solutions.queries@gmail.com')}
           >
-            Send Email
+            queries
+          </Text>{' '}
+          or{' '}
+          <Text
+            style={styles.emailLink}
+            onPress={() => Linking.openURL('mailto:hethi.solutions.feedback@gmail.com')}
+          >
+            feedback
           </Text>
         </Text>
       </View>
@@ -82,31 +111,11 @@ const RootNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    //backgroundColor: '#fff',
-  },
-  header: {
-    backgroundColor: '#007bff',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-  },
-  lightBackground: {
-    backgroundColor: '#fff',
-  },
-  darkBackground: {
-    backgroundColor: '#000',
-  },
-  headerText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  content: {
-    flex: 1,
-    //overflow: 'hidden', // ensures footer remains fixed
-  },
+  safeArea: { flex: 1 },
+  header: { backgroundColor: '#007bff', paddingVertical: 20, paddingHorizontal: 20 },
+  lightBackground: { backgroundColor: '#fff' },
+  darkBackground: { backgroundColor: '#000' },
+  content: { flex: 1 },
   footer: {
     backgroundColor: '#e6f0ff',
     paddingVertical: 10,
@@ -114,57 +123,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#cce0ff',
   },
-  footerText: {
-    fontSize: 12,
-    color: 'grey',
-  },
-  emailLink: {
-    color: '#1a3c70',
-    textDecorationLine: 'underline',
-    marginTop: 4,
-    fontSize: 13,
-  },
-  footerSubText: {
-    fontSize: 13,
-    color: 'grey',
-  },
-  container: {
+  footerText: { fontSize: 12, color: 'grey' },
+  emailLink: { color: '#1a3c70', textDecorationLine: 'underline', fontSize: 13 },
+  footerSubText: { fontSize: 13, color: 'grey' },
+  tickerWrapper: {
+    height: 22,
     overflow: 'hidden',
-    height: 30,
     backgroundColor: '#e2f1ff',
     justifyContent: 'center',
   },
-  text: {
+  tickerAnimatedContainer: { flexDirection: 'row', width: width * 2 },
+  tickerText: {
     fontSize: 16,
-    fontWeight: 'bold',
     color: '#1a3c70',
+    fontWeight: 'bold',
+    paddingHorizontal: 20,
   },
-  tickerContainer: {
-      height: 30,
-      overflow: 'hidden',
-      backgroundColor: '#e2f1ff',
-      justifyContent: 'center',
-      alignItems: 'center',
-      width: '100%',
-    },
-    tickerWrapper: {
-        height: 22,
-        overflow: 'hidden',
-        backgroundColor: '#e2f1ff',
-        justifyContent: 'center',
-      },
-
-      tickerAnimatedContainer: {
-        flexDirection: 'row',
-        width: width * 2, // allow enough room for 2 texts to scroll
-      },
-
-      tickerText: {
-        fontSize: 16,
-        color: '#1a3c70',
-        fontWeight: 'bold',
-        paddingHorizontal: 20,
-      },
 });
 
 export default RootNavigator;

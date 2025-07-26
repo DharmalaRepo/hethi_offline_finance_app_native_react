@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Button } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Button,  Image} from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Category } from '../models/Category';
 import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import { SubCategory } from '../models/SubCategory';
 import { Transaction } from '../models/Transaction';
-import { getCategories, getPersons, getAllCategories, getAllPersons, getAccounts, addCategory, 
+import { getCategories, getPersons, getAllPersons, getAccounts, addCategory, 
   addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues } from '../services/mockDataService';
 import { showToast, validateTransactionData, autoDetectFromNotes } from '../utils/transactionUtils';
 import * as mockDataService from '../services/mockDataService';
@@ -19,9 +19,25 @@ import { FlatList } from 'react-native';
 import { Modal } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { ToastAndroid } from 'react-native';
+import {
+  CompositeNavigationProp,
+  useNavigation,
+} from '@react-navigation/native';
+import {
+  NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
+import type { RootStackParamList, MoreStackParamList } from '../navigation/routes';
 
 
 const LogTransactionForm = () => {
+
+    type DashboardNavigationProp = CompositeNavigationProp<
+      NativeStackNavigationProp<RootStackParamList>,
+      NativeStackNavigationProp<MoreStackParamList>
+    >;
+  
+  const navigation = useNavigation<DashboardNavigationProp>();
+
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
@@ -55,7 +71,7 @@ const LogTransactionForm = () => {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   const reloadConfig = async () => {
-    setCategories(await getAllCategories());
+    setCategories(await getCategories());
     setPersons(await getAllPersons());
   };
 
@@ -97,11 +113,8 @@ const openCategoryPicker = async () => {
   await new Promise(res => setTimeout(res, 100)); 
   await reloadConfig(); 
    // Re-fetch the saved category with updated ID from AsyncStorage
-  const refreshed = await getAllCategories();
+  const refreshed = await getCategories();
   const matched = refreshed.find(cat => cat.name.toLowerCase() === name.toLowerCase());
-
-    console.log('🔍 Available categories:', categories.map(c => ({ id: c.id, name: c.name })));
-    console.log('🔍 Looking for categoryId:', category?.id);
 
   if (!matched) {
     console.warn('Category not found in AsyncStorage:', category?.id);
@@ -135,7 +148,7 @@ const openSubCategoryPicker = async () => {
     await addSubCategory(category.id, newSub);
 
     // Refresh categories from storage
-    const refreshed = await getAllCategories();
+    const refreshed = await getCategories();
     const matched = refreshed.find(cat => cat.id === category.id);
     if (matched) {
       setCategory(matched);
@@ -214,13 +227,12 @@ const openSubCategoryPicker = async () => {
       };
 
       // Step 3: Debug Log
-      console.log('[SAVE] Transaction object:', JSON.stringify(transaction, null, 2));
+      //console.log('[SAVE] Transaction object:', JSON.stringify(transaction, null, 2));
 
       // Step 4: Save Transaction
       await saveTransaction(transaction);
       ToastAndroid.show('Transaction saved successfully!', ToastAndroid.SHORT);
       showToast('success', 'Transaction saved successfully');
-      console.log('success', 'Transaction saved successfully');
       // Step 5: Reset Form
       resetForm();
     } catch (error) {
@@ -325,36 +337,33 @@ onPress: async () => {
 
   return (
       <>
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled">
 
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-      <Text style={[commonStyles.label, { fontSize: 20, fontWeight: 'bold' }]}>Log Transaction</Text>
-      <TouchableOpacity
-        onPress={reloadConfig}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: '#007bff',
-          borderRadius: 6,
-          paddingVertical: 4,
-          paddingHorizontal: 8,
-          backgroundColor: '#e6f0ff',
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: '#007bff',
-            marginRight: 6,
-          }}
-        >
-          ⟳
-        </Text>
-        <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
-      </TouchableOpacity>
-    </View>
+    {/* Header with logo and title and bell */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+                  <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                  <Text style={styles.title}>Log Transaction</Text>
+                </View>
+                <View style={styles.headerRight}>
+                  <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
+                    <Ionicons name="refresh" size={22} color="#e6f0ff" />
+                  </TouchableOpacity>
+                </View>
+                {/* Add Person */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('MoreNavigator', { screen: 'Persons' })}>
+                  <Ionicons name="person-add-outline" size={22} color="#e6f0ff" />
+                </TouchableOpacity>
+
+                {/* Add Categories */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('MoreNavigator', { screen: 'Categories' })}>
+                  <Ionicons name="pricetags-outline" size={22} color="#e6f0ff" />
+                </TouchableOpacity>
+          </View>                   
+
+    
 
       {/* Type Toggle */}
       <View style={commonStyles.row}>
@@ -371,6 +380,8 @@ onPress: async () => {
           <Text style={commonStyles.toggleText}>Income</Text>
         </TouchableOpacity>
       </View>
+
+      
 
       {/* Amount and Date - Side by Side */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
@@ -433,7 +444,11 @@ onPress: async () => {
 
       {showCategoryList && (
         <View style={{ maxHeight: 150 }}>
-          <ScrollView nestedScrollEnabled>
+          <ScrollView
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={true} // 👈 shows scrollbar
+                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }} // optional border for clarity
+              >
             {categories.map(item => (
               <TouchableOpacity
                 key={item.id}
@@ -473,7 +488,11 @@ onPress: async () => {
 
         {showSubCategoryList && category && (
           <View style={{ maxHeight: 150 }}>
-            <ScrollView nestedScrollEnabled>
+            <ScrollView
+                            nestedScrollEnabled
+                            showsVerticalScrollIndicator={true} // 👈 shows scrollbar
+                            style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }} // optional border for clarity
+                          >
               {(category.subcategories || []).map(item => (
                 <TouchableOpacity
                   key={item.id}
@@ -633,7 +652,7 @@ onPress: async () => {
                   await addCategory(newCat);
 
                   // Fetch updated categories after save
-                  const updated = await getAllCategories();
+                  const updated = await getCategories();
                   const updatedCat = updated.find(c => c.id === newCat.id);
 
                   if (updatedCat) {
@@ -727,10 +746,7 @@ onPress: async () => {
                     }
 
                     try {
-                      const allCategories = await getAllCategories(); // ✅ freshly read
-
-                      console.log('[DEBUG] All Categories:', JSON.stringify(allCategories, null, 2));
-                      console.log('[DEBUG] Looking for Category ID:', category?.id);
+                      const allCategories = await getCategories(); // ✅ freshly read
 
                       const targetCategory = allCategories.find(cat => cat.id === category.id);
 
@@ -759,7 +775,7 @@ onPress: async () => {
                       // 🔁 Refresh config and update local category state
                       await reloadConfig();
 
-                      const refreshed = await getAllCategories();
+                      const refreshed = await getCategories();
                       const matched = refreshed.find(cat => cat.id === category.id);
                       if (matched) {
                         setCategory(matched);
@@ -789,9 +805,13 @@ onPress: async () => {
 
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
     padding: 16,
-    backgroundColor: '#f9fbff',
+    paddingBottom: 30,
   },
   label: {
     fontSize: 16,
@@ -799,6 +819,50 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     color: '#222',
   },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
+
+iconButton: {
+  marginLeft: 12,
+},
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -865,6 +929,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    marginLeft: 4,
+    color: '#2d3436',
+  },
+  quickText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  quickLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 10,
+  },
+  quickCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
   },
 });
 

@@ -91,7 +91,7 @@ const ReversibleTransactionsScreen = () => {
           };
 
           await saveTransaction(reverseTxn);
-          console.log('Reverse transaction saved:', reverseTxn);
+          //console.log('Reverse transaction saved:', reverseTxn);
           await updateTransaction({ ...txn, isSettled: true });
           refresh();
         },

@@ -1,6 +1,27 @@
 import EncryptedStorage from 'react-native-encrypted-storage';
+console.log('EncryptedStorage test:', EncryptedStorage);
 
-export const saveSecureItem = async (key: string, value: any): Promise<void> => {
+
+
+export const getSecureItem = async (key: string): Promise<string | null> => {
+  try {
+    return await EncryptedStorage.getItem(key);
+  } catch (error) {
+    console.error('Error getting secure item', error);
+    return null;
+  }
+};
+
+export const setSecureItem = async (key: string, value: string) => {
+  try {
+    await EncryptedStorage.setItem(key, value);
+  } catch (error) {
+    console.error('Error setting secure item', error);
+  }
+};
+
+
+export const saveSecureItemInJson = async (key: string, value: any): Promise<void> => {
   try {
     await EncryptedStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
@@ -9,7 +30,7 @@ export const saveSecureItem = async (key: string, value: any): Promise<void> => 
   }
 };
 
-export const getSecureItem = async <T = any>(key: string): Promise<T | null> => {
+export const getSecureItemInJsonFormat = async <T = any>(key: string): Promise<T | null> => {
   try {
     const item = await EncryptedStorage.getItem(key);
     return item ? JSON.parse(item) : null;

@@ -6,6 +6,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import LogTransactionScreen from '../screens/LogTransactionScreen';
 import AddTransactionScreen from '../screens/AddTransactionScreen';
 import ReportsScreen from '../screens/ReportsScreen';
+import BalanceSheetScreen from '../screens/BalanceSheetScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import ManageCategoriesScreen from '../screens/ManageCategoriesScreen';
 import MoreNavigator from './MoreNavigator';
@@ -32,27 +33,30 @@ const BottomTabNavigator = () => {
             case 'Transactions':
               iconName = 'book-outline';
               break;
-            case 'Persons':
-              iconName = 'people-outline';
+            case 'Reports':
+              iconName = 'bar-chart-outline';
               break;
-            case 'Categories':
-              iconName = 'pricetags-outline';
+            case 'BalanceSheets':
+              iconName = 'document-text-outline';
               break;
-            case 'Menu':
+            case 'MoreNavigator':
               iconName = 'menu-outline';
               break;
           }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         }
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }}
+      />
       <Tab.Screen name="Log" component={LogTransactionScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
-      <Tab.Screen name="Persons" component={ManagePersonsScreen} />
-      <Tab.Screen name="Categories" component={ManageCategoriesScreen} />
-      <Tab.Screen name="Menu" component={MoreNavigator} />
+      <Tab.Screen name="Reports" component={ReportsScreen} />
+      <Tab.Screen name="BalanceSheets" component={BalanceSheetScreen} />
+      <Tab.Screen name="MoreNavigator" component={MoreNavigator} />
 
     </Tab.Navigator>
   );

@@ -10,4 +10,11 @@ export interface AppSettings {
   profileName?: string;
   profileNotes?: string;
   theme?: 'light' | 'dark'; // ✅ Add this line
+  pinEnabled?: boolean;
+  biometricEnabled: boolean;
+  autoLockEnabled: boolean;
+  autoLockTime: number; // in minutes
+  securityQuestionEnabled?: boolean;
+  securityQuestion?: string;
+  securityAnswer?: string;
 }

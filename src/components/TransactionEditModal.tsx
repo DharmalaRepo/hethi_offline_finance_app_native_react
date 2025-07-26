@@ -16,6 +16,7 @@ import { Category } from '../models/Category';
 import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import { getCategories, getPersons, getAccounts } from '../services/mockDataService';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   visible: boolean;
@@ -57,7 +58,14 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
   useEffect(() => {
     const selectedCategory = categories.find((cat) => cat.id === categoryId);
     setSubCategories(selectedCategory?.subcategories || []);
+
   }, [categoryId, categories]);
+
+  useEffect(() => {
+      const selectedAccounts = persons.find((per) => per.id === personId);
+      setAccounts(selectedAccounts?.accounts || []);
+
+    }, [personId, persons]);
 
   useEffect(() => {
     if (transaction && visible) {
@@ -123,17 +131,26 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={styles.input}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="numeric"
-              placeholder="Amount"
-            />
+            <View style={styles.rowContainer}>
+              {/* Amount Input */}
+              <TextInput
+                style={[styles.input, { flex: 1, marginRight: 8 }]}
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="numeric"
+                placeholder="Amount"
+              />
 
-            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-              <Text style={styles.dateLabel}>Date: {date.toDateString()}</Text>
-            </TouchableOpacity>
+              {/* Date Picker with Calendar Icon */}
+              <TouchableOpacity
+                style={styles.datePicker}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#333" style={{ marginRight: 6 }} />
+                <Text style={styles.dateText}>{date.toDateString()}</Text>
+              </TouchableOpacity>
+            </View>
+
             {showDatePicker && (
               <DateTimePicker
                 value={date}
@@ -193,7 +210,7 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
             >
               <Picker.Item label="Select Account" value="" />
               {accounts.map((acc) => (
-                <Picker.Item key={acc.id} label={acc.name} value={acc.id} />
+                <Picker.Item key={acc.id} label={acc.accountTypeOrName} value={acc.id} />
               ))}
             </Picker>
 
@@ -289,6 +306,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  rowContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    datePicker: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#ccc',
+      borderRadius: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      backgroundColor: '#fff',
+    },
+    dateText: {
+      fontSize: 14,
+      color: '#333',
+    },
 });
 
 export default TransactionEditModal;

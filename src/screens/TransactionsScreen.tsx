@@ -10,11 +10,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  Alert,
+  Alert, Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { getAllTransactions, deleteTransaction, updateTransaction } from '../services/mockDataService';
-import { getCategories, getPersons } from '../services/mockDataService';
+import { getAllTransactions, deleteTransaction, updateTransaction, getAllPersons } from '../services/mockDataService';
+import { getCategories, getPersons, getAccounts } from '../services/mockDataService';
 import { Transaction } from '../models/Transaction';
 import { Category } from '../models/Category';
 import TransactionEditModal from '../components/TransactionEditModal';
@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons'; // Or react-native-vector-icons
 import { useFocusEffect } from '@react-navigation/native';
 import TransactionListItem from '../components/TransactionListItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Account } from '../models/Account';
 
 
 
@@ -43,6 +44,7 @@ export default function TransactionsScreen() {
   const [subCategoriesMap, setSubCategoriesMap] = useState<Record<string, string>>({});
   const [sortColumn, setSortColumn] = useState<string>('date');
   const [persons, setPersons] = useState<Person[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -58,13 +60,17 @@ export default function TransactionsScreen() {
      }, [])
    );
 
-  useEffect(() => {
-    const loadPersons = async () => {
-      const fetchedPersons = await getPersons();
-      setPersons(fetchedPersons);
-    };
+  useEffect(() => {    
     loadPersons();
   }, []);
+
+  useEffect(() => {
+      const loadAccounts = async () => {
+        const fetchedAccounts = await getAccounts();
+        setAccounts(fetchedAccounts);
+      };
+      loadAccounts();
+    }, []);
 
   useEffect(() => {
   const loadCategories = async () => {
@@ -87,10 +93,21 @@ export default function TransactionsScreen() {
     setFiltered(txns);
   };
 
+  const loadPersons = async () => {
+      const fetchedPersons = await getPersons();
+      setPersons(fetchedPersons);
+      };
+
   const personsMap: Record<string, string> = persons.reduce((acc, person) => {
     acc[person.id] = person.name;
     return acc;
   }, {} as Record<string, string>);
+
+    const accountsMap: Record<string, string> = accounts.reduce((acc, account) => {
+      acc[account.id] = account.accountTypeOrName;
+      return acc;
+    }, {} as Record<string, string>);
+
 
   const filteredTransactions = transactions.filter((tx) => {
     const category = categoriesMap[tx.categoryId]?.toLowerCase() || '';
@@ -227,22 +244,18 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
 
   return (
     <View style={styles.container}>
-      {/* Header Title */}
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Transactions</Text>
-        <TouchableOpacity
-                      onPress={loadTransactions}
-                      style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#007bff',
-                        borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#e6f0ff', }}
-                    >
-                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6, }}>
-                        ⟳
-                      </Text>
-                      <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
-              </TouchableOpacity>
-
-      </View>
-
+      <View style={styles.header}>
+         <View style={styles.headerLeft}>
+                        <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                        <Text style={styles.title}> Transactions</Text>
+                      </View>
+                      <View style={styles.headerRight}>
+                        <TouchableOpacity onPress={loadTransactions} style={styles.iconButton}>
+                          <Ionicons name="refresh" size={22} color="#e6f0ff" />
+                        </TouchableOpacity>
+                      </View>           
+      </View>                 
+      
       {/* Search Row */}
       <View style={styles.searchRow}>
         <TextInput
@@ -323,6 +336,7 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
         categoryMap={categoriesMap}
         subCategoryMap={subCategoriesMap}
         personsMap={personsMap}
+        accountsMap={accountsMap}
       />
 
       {/* Date Pickers */}
@@ -363,14 +377,64 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#ffffff',
   },
-
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#003366',
-    marginBottom: 12,
+screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
   },
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
 
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
+
+iconButton: {
+  marginLeft: 12,
+},
   // Header row with title and refresh icon
   headerRow: {
     flexDirection: 'row',

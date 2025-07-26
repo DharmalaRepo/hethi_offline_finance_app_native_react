@@ -15,7 +15,7 @@ const ReportsScreen = () => {
       setLoading(false);
     };
     fetchTransactions();
-  }, []);
+  }, [ ]);
 
   if (loading) {
     return (
@@ -27,13 +27,7 @@ const ReportsScreen = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      {transactions.length > 0 ? (
-        <ReportsView transactions={transactions} />
-      ) : (
-        <Text style={{ textAlign: 'center', marginTop: 50 }}>
-          No transactions found
-        </Text>
-      )}
+        <ReportsView />
     </View>
   );
 };

@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ScrollView } from 'react-native-gesture-handler';
 import RNPickerSelect from 'react-native-picker-select';
-import RNFS from 'react-native-fs';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import { Picker } from '@react-native-picker/picker';
 import * as Sharing from 'expo-sharing'; // If using Expo
@@ -18,7 +17,7 @@ import {
 } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
-import { getAllTransactions, getAllCategories, getAllSubCategories } from '../services/mockDataService';
+import { getAllTransactions, getCategories, getAllSubCategories } from '../services/mockDataService';
 import { Transaction } from '../models/Transaction';
 import {  Category } from '../models/Category';
 import {  SubCategory } from '../models/SubCategory';
@@ -29,7 +28,8 @@ import { getTransactionsForMonth } from '../services/mockDataService';
 
 const screenWidth = Dimensions.get('window').width;
 
-const ReportsView = ({ transactions }: { transactions: Transaction[] }) => {
+const ReportsView = () => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
   const [month, setMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
@@ -52,17 +52,25 @@ const ReportsView = ({ transactions }: { transactions: Transaction[] }) => {
 
 
  useEffect(() => {
-   const fetchData = async () => {
-     setLoading(true);
-     const txns = await getAllTransactions();
-     const cats = await getAllCategories();
-     const subs = await getAllSubCategories(); 
-     setCategories(cats);
-     setSubcategories(subs); // ✅ Save it
-     setLoading(false);
-   };
    fetchData();
  }, []);
+
+  const reloadReports = () => {
+     fetchData();
+     console.log("Reloading Reports...");
+   };
+
+ const fetchData = async () => {
+      setLoading(true);
+
+      const txns = await getAllTransactions();
+      const cats = await getCategories();
+      const subs = await getAllSubCategories();
+      setTransactions(txns);
+      setCategories(cats);
+      setSubcategories(subs); // ✅ Save it
+      setLoading(false);
+    };
 
    useEffect(() => {
      if (comparisonEnabled) {
@@ -73,19 +81,25 @@ const ReportsView = ({ transactions }: { transactions: Transaction[] }) => {
      }
    }, [comparisonEnabled, month1, month2]);
 
-  const filteredTxns = transactions.filter(txn => {
-    const txnMonth = txn.date.slice(0, 7);
-    const matchesMonth = txnMonth === month;
-    const matchesType = typeFilter === 'all' || txn.type === typeFilter;
-    const categoryName = categories.find(c => c.id === txn.categoryId)?.name?.toLowerCase() || '';
-    const subcategoryName = subcategories.find(sc => sc.id === txn.subCategoryId)?.name?.toLowerCase() || '';
+  const filteredTxns = useMemo(() => {
+    return transactions.filter(txn => {
+      const txnMonth = txn.date.slice(0, 7); // "YYYY-MM"
+      const matchesMonth = txnMonth === month;
+      const matchesType = typeFilter === 'all' || txn.type === typeFilter;
 
-    const matchesSearch =
-      categoryName.includes(search.toLowerCase()) ||
-      subcategoryName.includes(search.toLowerCase());
+      const categoryName =
+        categories.find(c => c.id === txn.categoryId)?.name?.toLowerCase() || '';
+      const subcategoryName =
+        subcategories.find(sc => sc.id === txn.subCategoryId)?.name?.toLowerCase() || '';
 
-    return matchesMonth && matchesType && matchesSearch;
-  });
+      const matchesSearch =
+        categoryName.includes(search.toLowerCase()) ||
+        subcategoryName.includes(search.toLowerCase());
+
+      return matchesMonth && matchesType && matchesSearch;
+    });
+  }, [transactions, month, typeFilter, search, categories, subcategories]);
+
 
 const exportToCSV = async (
   sum1: { income: number; expense: number; savings: number },
@@ -249,7 +263,26 @@ const exportToPDF = async (
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>📊 Reports Dashboard</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}> Reports Dashboard</Text>
+
+        <TouchableOpacity
+          onPress={reloadReports}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: '#007bff',
+            borderRadius: 6,
+            paddingVertical: 4,
+            paddingHorizontal: 8,
+            backgroundColor: '#e6f0ff',
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6 }}>⟳</Text>
+          <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Summary */}
       <View style={styles.card}>
@@ -430,7 +463,6 @@ const exportToPDF = async (
                categories.find(cat => cat.id === txn.categoryId)?.name || txn.categoryId;
              const subcategoryName =
                subcategories.find(sub => sub.id === txn.subCategoryId)?.name || txn.subCategoryId;
-
              return (
                <View key={txn.id} style={styles.tableRow}>
                  <Text style={styles.tableCell}>{txn.date}</Text>

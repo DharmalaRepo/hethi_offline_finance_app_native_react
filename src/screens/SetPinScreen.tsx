@@ -1,94 +1,257 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Button, SafeAreaView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
-import { useThemeContext } from '../components/ThemeContext'; // ✅ Ensure correct import
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, ScrollView
+} from 'react-native';
+import {
+  getPin,
+  savePin,
+  validatePin,
+  getSecurityQA,
+  saveSecurityQA,
+  validateSecurityAnswer,
+} from '../services/mockDataService';
 
-const SetPinScreen = () => {
-  const [pin, setPin] = useState('');
+const PinProtectionScreen = () => {
+  const [mode, setMode] = useState<'set' | 'change' | 'reset'>('set');
+  const [pinExists, setPinExists] = useState(false);
+
+  const [oldPin, setOldPin] = useState('');
+  const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [error, setError] = useState('');
-  const navigation = useNavigation();
 
-  const { theme } = useThemeContext();
-  const isDark = theme === 'dark';
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [resetAnswer, setResetAnswer] = useState('');
 
-  const themedColors = {
-    background: isDark ? '#000' : '#fff',
-    text: isDark ? '#fff' : '#000',
-    inputBg: isDark ? '#222' : '#f2f2f2',
-    border: isDark ? '#555' : '#ccc',
-  };
+  useEffect(() => {
+    (async () => {
+      const existingPin = await getPin();
+      const q = await getSecurityQA();
+      setPinExists(!!existingPin);
+      setQuestion(q);
+      setMode(existingPin ? 'change' : 'set');
+    })();
+  }, []);
 
   const handleSetPin = async () => {
-    if (pin.length < 4 || pin !== confirmPin) {
-      setError('PIN must be at least 4 digits and match confirmation.');
+    if (!newPin || !confirmPin || newPin !== confirmPin) {
+      Alert.alert('Error', 'PINs do not match or are empty.');
       return;
     }
-    await AsyncStorage.setItem('app_pin', pin);
-    navigation.goBack();
+    if (!question || !answer) {
+      Alert.alert('Error', 'Please provide a security question and answer.');
+      return;
+    }
+
+    await savePin(newPin);
+    await saveSecurityQA(question, answer);
+    Alert.alert('Success', 'PIN set successfully!');
+    resetFields();
+    setMode('change');
+    setPinExists(true);
+  };
+
+  const handleChangePin = async () => {
+    const isValid = await validatePin(oldPin);
+    if (!isValid) {
+      Alert.alert('Invalid PIN', 'The old PIN you entered is incorrect.');
+      return;
+    }
+    if (!newPin || newPin !== confirmPin) {
+      Alert.alert('Error', 'New PINs do not match.');
+      return;
+    }
+    await savePin(newPin);
+    Alert.alert('Success', 'PIN changed successfully!');
+    resetFields();
+  };
+
+  const handleResetPin = async () => {
+    const valid = await validateSecurityAnswer(resetAnswer);
+    if (!valid) {
+      Alert.alert('Error', 'Incorrect answer to security question.');
+      return;
+    }
+    if (!newPin || newPin !== confirmPin) {
+      Alert.alert('Error', 'New PINs do not match.');
+      return;
+    }
+    await savePin(newPin);
+    Alert.alert('Success', 'PIN reset successfully!');
+    resetFields();
+    setMode('change');
+  };
+
+  const resetFields = () => {
+    setOldPin('');
+    setNewPin('');
+    setConfirmPin('');
+    setAnswer('');
+    setResetAnswer('');
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themedColors.background }]}>
-      <Text style={[styles.title, { color: themedColors.text }]}>Set PIN</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.heading}>🔐 PIN Protection</Text>
 
-      <TextInput
-        style={[styles.input, { backgroundColor: themedColors.inputBg, color: themedColors.text, borderColor: themedColors.border }]}
-        placeholder="Enter PIN"
-        placeholderTextColor={isDark ? '#aaa' : '#888'}
-        secureTextEntry
-        keyboardType="number-pad"
-        value={pin}
-        onChangeText={setPin}
-      />
-
-      <TextInput
-        style={[styles.input, { backgroundColor: themedColors.inputBg, color: themedColors.text, borderColor: themedColors.border }]}
-        placeholder="Confirm PIN"
-        placeholderTextColor={isDark ? '#aaa' : '#888'}
-        secureTextEntry
-        keyboardType="number-pad"
-        value={confirmPin}
-        onChangeText={setConfirmPin}
-      />
-
-      {error !== '' && <Text style={[styles.error, { color: 'red' }]}>{error}</Text>}
-
-      <View style={styles.buttonContainer}>
-        <Button title="Set PIN" onPress={handleSetPin} />
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.tabButton, mode === 'set' && styles.activeTab]}
+          onPress={() => setMode('set')}
+        >
+          <Text style={styles.tabText}>Set PIN</Text>
+        </TouchableOpacity>
+        {pinExists && (
+          <>
+            <TouchableOpacity
+              style={[styles.tabButton, mode === 'change' && styles.activeTab]}
+              onPress={() => setMode('change')}
+            >
+              <Text style={styles.tabText}>Change PIN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, mode === 'reset' && styles.activeTab]}
+              onPress={() => setMode('reset')}
+            >
+              <Text style={styles.tabText}>Forgot PIN</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
-    </SafeAreaView>
+
+      {mode === 'set' && (
+        <>
+          <TextInput
+            secureTextEntry
+            placeholder="Enter new PIN"
+            value={newPin}
+            onChangeText={setNewPin}
+            style={styles.input}
+          />
+          <TextInput
+            secureTextEntry
+            placeholder="Confirm new PIN"
+            value={confirmPin}
+            onChangeText={setConfirmPin}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Security Question"
+            value={question}
+            onChangeText={setQuestion}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Answer"
+            value={answer}
+            onChangeText={setAnswer}
+            style={styles.input}
+          />
+          <Button title="Set PIN" onPress={handleSetPin} />
+        </>
+      )}
+
+      {mode === 'change' && (
+        <>
+          <TextInput
+            secureTextEntry
+            placeholder="Enter old PIN"
+            value={oldPin}
+            onChangeText={setOldPin}
+            style={styles.input}
+          />
+          <TextInput
+            secureTextEntry
+            placeholder="Enter new PIN"
+            value={newPin}
+            onChangeText={setNewPin}
+            style={styles.input}
+          />
+          <TextInput
+            secureTextEntry
+            placeholder="Confirm new PIN"
+            value={confirmPin}
+            onChangeText={setConfirmPin}
+            style={styles.input}
+          />
+          <Button title="Change PIN" onPress={handleChangePin} />
+        </>
+      )}
+
+      {mode === 'reset' && (
+        <>
+          <Text style={styles.questionText}>Q: {question}</Text>
+          <TextInput
+            placeholder="Your Answer"
+            value={resetAnswer}
+            onChangeText={setResetAnswer}
+            style={styles.input}
+          />
+          <TextInput
+            secureTextEntry
+            placeholder="New PIN"
+            value={newPin}
+            onChangeText={setNewPin}
+            style={styles.input}
+          />
+          <TextInput
+            secureTextEntry
+            placeholder="Confirm New PIN"
+            value={confirmPin}
+            onChangeText={setConfirmPin}
+            style={styles.input}
+          />
+          <Button title="Reset PIN" onPress={handleResetPin} />
+        </>
+      )}
+    </ScrollView>
   );
 };
 
+export default PinProtectionScreen;
+
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: '#f6faff',
+    flexGrow: 1,
   },
-  title: {
+  heading: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 16,
     textAlign: 'center',
+    color: '#2c3e50',
   },
   input: {
+    borderColor: '#ced6e0',
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginVertical: 10,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 12,
+    backgroundColor: '#fff',
   },
-  buttonContainer: {
-    marginTop: 20,
+  tabButton: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: '#dfe6e9',
+    margin: 4,
+    borderRadius: 6,
   },
-  error: {
-    marginTop: 8,
-    fontSize: 14,
+  activeTab: {
+    backgroundColor: '#74b9ff',
+  },
+  tabText: {
     textAlign: 'center',
+    fontWeight: '600',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  questionText: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+    fontSize: 16,
   },
 });
-
-export default SetPinScreen;

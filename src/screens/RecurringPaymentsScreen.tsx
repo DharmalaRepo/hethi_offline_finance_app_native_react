@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RecurringPayment } from '../models/RecurringPayment';
 import RecurringPaymentModal from '../components/RecurringPaymentModal';
 import uuid from 'react-native-uuid';
+import { getAllRecurringPayments, saveRecurringPayments } from '../services/mockDataService';
 
 const RecurringPaymentsScreen = () => {
   const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
@@ -26,19 +27,26 @@ const RecurringPaymentsScreen = () => {
     loadData();
   }, []);
 
+   const reloadData = () => {
+      loadData();
+      console.log("Reloading recurring payment data...");
+    };
+
   useEffect(() => {
     applyFilterAndSearch();
   }, [recurringPayments, searchText, filterType]);
 
   const loadData = async () => {
-    const data = await AsyncStorage.getItem('recurringPayments');
-    if (data) setRecurringPayments(JSON.parse(data));
+    const data = await getAllRecurringPayments();
+    if (data) setRecurringPayments(data);
   };
 
   const saveData = async (updated: RecurringPayment[]) => {
-    setRecurringPayments(updated);
+    saveRecurringPayments(updated);
     await AsyncStorage.setItem('recurringPayments', JSON.stringify(updated));
   };
+
+
 
   const handleAdd = (data: Partial<RecurringPayment>) => {
     const newItem: RecurringPayment = {
@@ -47,11 +55,19 @@ const RecurringPaymentsScreen = () => {
       amount: data.amount!,
       type: data.type!,
       startDate: data.startDate!,
-      repeatEvery: data.repeatEvery!,
+      frequency: data.frequency!,
       endDate: data.endDate,
       createdAt: new Date().toISOString(),
       transactionTemplate: {}, // placeholder or default
-      repeatType: data.repeatEvery!,
+      repeatType: data.repeatType!,
+      dueDate: data.dueDate ?? data.startDate!, // fallback to startDate if dueDate not provided
+      categoryId: data.categoryId ?? '',
+      subCategoryId: data.subCategoryId ?? '',
+      personId: data.personId ?? '',
+      personName: data.personName ?? '',
+      isTestData: data.isTestData ?? false,
+      note: data.note ?? '',
+      accountId: data.accountId ?? '',
     };
     const updated = [...recurringPayments, newItem];
     saveData(updated);
@@ -96,6 +112,27 @@ const RecurringPaymentsScreen = () => {
 
   return (
     <View style={styles.container}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}> Manage Recurring Payments</Text>
+
+                  <TouchableOpacity
+                    onPress={reloadData}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: '#007bff',
+                      borderRadius: 6,
+                      paddingVertical: 4,
+                      paddingHorizontal: 8,
+                      backgroundColor: '#e6f0ff',
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6 }}>⟳</Text>
+                    <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
+                  </TouchableOpacity>
+                </View>
+
       <TextInput
         style={styles.input}
         placeholder="Search by title or person"
@@ -130,7 +167,7 @@ const RecurringPaymentsScreen = () => {
               </Text>
             </View>
             <Text style={styles.subtext}>
-              {item.type} • {item.repeatEvery} • Until: {item.endDate ? new Date(item.endDate).toDateString() : '∞'}
+              {item.type} • {item.frequency} • Until: {item.endDate ? new Date(item.endDate).toDateString() : '∞'}
             </Text>
             <View style={styles.rowButtons}>
               <TouchableOpacity

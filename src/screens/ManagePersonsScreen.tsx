@@ -5,6 +5,7 @@ import { Account } from '../models/Account';
 import uuid from 'react-native-uuid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { getPersons } from '../services/mockDataService';
 
 const ManagePersonsScreen = () => {
   const [persons, setPersons] = useState<Person[]>([]);
@@ -23,8 +24,9 @@ const ManagePersonsScreen = () => {
 
 
   const loadPersons = async () => {
-    const json = await AsyncStorage.getItem('persons');
-    if (json) setPersons(JSON.parse(json));
+      //console.log('Inside loadPersons');
+    const json = await getPersons();
+    if (json) setPersons(json);
   };
 
 

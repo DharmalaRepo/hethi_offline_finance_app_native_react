@@ -8,9 +8,11 @@ import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import { Transaction } from '../models/Transaction';
 import { RecurringPayment } from '../models/RecurringPayment';
-import { getCategories, getPersons, getAllTransactions, getAllRecurringPayments, getAllCategories, 
+import { getCategories, getPersons, getAllTransactions, getAllRecurringPayments, saveClosingBalances, saveOpeningBalances,
   getAllPersons, getAccounts, addCategory, addSubCategory, addPerson, saveTransaction, 
-  getFallbackTransactionValues, saveCategories, savePersons, saveTransactions, saveRecurringPayments } from '../services/mockDataService';
+  getFallbackTransactionValues, saveCategories, savePersons, saveTransactions, saveRecurringPayments, saveToStorageSecured, clearAllData } from '../services/mockDataService';
+import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
+import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
 
 
 const CATEGORY_KEY = 'categories';
@@ -18,8 +20,9 @@ const PERSON_KEY = 'persons';
 const ACCOUNT_KEY = 'accounts';
 const TRANSACTION_KEY = 'transactions';
 const RECURRINGPAYEMENTS_KEY= 'recurringPayments';
-const OPENINGBALANCE_KEY= 'monthlyOpeningBalances';
 const CONFIRM_PHRASE = 'delete data';
+const OPENING_BALANCES_KEY = 'monthly_opening_balances';
+const CLOSING_BALANCES_KEY = 'monthly_closing_balances';
 
 const DataManagementScreen = () => {
   const [confirmationText, setConfirmationText] = useState('');
@@ -51,9 +54,7 @@ const DataManagementScreen = () => {
     );
   };
 
-  const saveToStorage = async (key: string, data: any) => {
-    await AsyncStorage.setItem(key, JSON.stringify(data));
-  };
+  
 
   const loadTestData = async () => {
     const testCategories: Category[] = [
@@ -89,12 +90,12 @@ const DataManagementScreen = () => {
     ];
 
     testCategories.forEach(cat => cat.subcategories?.forEach(sub => sub.categoryId = cat.id));
-    await saveToStorage(CATEGORY_KEY, testCategories);
+    await saveToStorageSecured(CATEGORY_KEY, testCategories);
 
     const persons: Person[] = [
       { id: uuid.v4().toString(), name: 'SHIVA', accounts: [], isTestData: true },
-      { id: uuid.v4().toString(), name: 'SANGI', accounts: [], isTestData: true },
-      { id: uuid.v4().toString(), name: 'HETHI', accounts: [], isTestData: true },
+      { id: uuid.v4().toString(), name: 'JOHN', accounts: [], isTestData: true },
+      { id: uuid.v4().toString(), name: 'PRANAVI', accounts: [], isTestData: true },
     ];
 
     (persons[0].accounts??= []).push({ id: uuid.v4().toString(), accountTypeOrName: 'HDFC', personId: persons[0].id, isTestData: true });
@@ -105,109 +106,203 @@ const DataManagementScreen = () => {
 
 
 
-    await saveToStorage(PERSON_KEY, persons);
+    await saveToStorageSecured(PERSON_KEY, persons);
 
-    const transactions: Transaction[] = generateSampleTransactions(persons, testCategories);
-    await saveToStorage(TRANSACTION_KEY, transactions);
+    const transactions: Transaction[] = generateSampleTransactions(testCategories, persons);
+    await saveToStorageSecured(TRANSACTION_KEY, transactions);
 
     const recurringPayments: RecurringPayment[] = [
-  {
-    id: uuid.v4().toString(),
-    title: 'Gold Investment - SHIVA',
-    type: 'expense',
-    amount: 5000,
-    categoryId: 'INVESTMENTS_ID',       // Replace with actual ID
-    subCategoryId: 'GOLD_SUB_ID',       // Replace with actual ID
-    personId: 'SHIVA_ID',               // Replace with actual ID
-    accountId: 'HDFC_ID',               // Replace with actual ID
-    note: 'Monthly Gold Investment',
-    frequency: 'monthly',
-    startDate: '2024-01-01',
-    dueDate: '2024-01-01',
-    endDate: '2026-01-01',
-    isTestData: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: uuid.v4().toString(),
-    title: 'RD Investment - SANGI',
-    type: 'expense',
-    amount: 8000,
-    categoryId: 'INVESTMENTS_ID',
-    subCategoryId: 'RD_SUB_ID',
-    personId: 'SANGI_ID',
-    accountId: 'ICICI_ID',
-    note: 'Semi-annual RD investment',
-    frequency: 'semi-annually',
-    startDate: '2024-01-01',
-    dueDate: '2024-01-01',
-    endDate: '2026-01-01',
-    isTestData: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: uuid.v4().toString(),
-    title: 'Monthly Clothes - HETHI',
-    type: 'expense',
-    amount: 2000,
-    categoryId: 'SHOPPING_ID',
-    subCategoryId: 'CLOTHS_SUB_ID',
-    personId: 'HETHI_ID',
-    accountId: 'CASH_HETHI_ID',
-    note: 'Monthly clothing shopping',
-    frequency: 'monthly',
-    startDate: '2024-01-01',
-    dueDate: '2024-01-01',
-    endDate: '2025-12-31',
-    isTestData: true,
-    createdAt: new Date().toISOString(),
-  },
-];
-    
-    await saveToStorage(RECURRINGPAYEMENTS_KEY, recurringPayments);
+    {
+      id: uuid.v4().toString(),
+      title: 'Gold Investment - SHIVA',
+      type: 'expense',
+      amount: 5000,
+      categoryId: testCategories[0].id,       // Replace with actual ID
+      subCategoryId: 'GOLD_SUB_ID',       // Replace with actual ID
+      personId: persons[0].id,               // Replace with actual ID
+      accountId: persons[0].accounts[0].id,               // Replace with actual ID
+      note: 'Monthly Gold Investment',
+      frequency: 'monthly',
+      startDate: '2024-01-01',
+      dueDate: '2024-01-01',
+      endDate: '2026-01-01',
+      isTestData: true,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: uuid.v4().toString(),
+      title: 'RD Investment - JOHN',
+      type: 'expense',
+      amount: 8000,
+      categoryId: testCategories[1].id,
+      subCategoryId: 'RD_SUB_ID',
+      personId: persons[1].id,
+      accountId: persons[1].accounts[0].id,  
+      note: 'Semi-annual RD investment',
+      frequency: 'semi-annually',
+      startDate: '2024-01-01',
+      dueDate: '2024-01-01',
+      endDate: '2026-01-01',
+      isTestData: true,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: uuid.v4().toString(),
+      title: 'Monthly Clothes - PRANAVI',
+      type: 'expense',
+      amount: 2000,
+      categoryId: testCategories[1].id,
+      subCategoryId: 'CLOTHS_SUB_ID',
+      personId: persons[2].id,
+      accountId: persons[2].accounts[0].id,  
+      note: 'Monthly clothing shopping',
+      frequency: 'monthly',
+      startDate: '2024-01-01',
+      dueDate: '2024-01-01',
+      endDate: '2025-12-31',
+      isTestData: true,
+      createdAt: new Date().toISOString(),
+    },
+    ];    
+    await saveToStorageSecured(RECURRINGPAYEMENTS_KEY, recurringPayments);
+
+    generateSampleMonthlyBalances();
+
     ToastAndroid.show('Test data loaded successfully.', ToastAndroid.SHORT);
   };
 
-  const generateSampleTransactions = (persons: Person[], categories: Category[]): Transaction[] => {
-    const transactions: Transaction[] = [];
+  const generateSampleMonthlyBalances = async () => {
+  const persons = await getAllPersons();
+  const now = new Date();
+
+  const openingBalances: MonthlyOpeningBalance[] = [];
+  const closingBalances: MonthlyClosingBalance[] = [];
+
+  const start = new Date(2024, 1); // Feb 2024
+  const end = new Date(now.getFullYear(), now.getMonth());
+
+  for (let d = new Date(start); d <= end; d.setMonth(d.getMonth() + 1)) {
+    const year = d.getFullYear()+'';
+    const mon = d.getMonth() + 1; // 1-based
+    const month = mon+''; // 1-based
+
+    persons.forEach(person => {
+      const accounts = person.accounts || [];
+      accounts.forEach(account => {
+        const opening: MonthlyOpeningBalance = {
+          id: uuid.v4().toString(),
+          personId: person.id,
+          accountId: account.id,
+          year,
+          month,
+          amount: 5000 + Math.floor(Math.random() * 1000), 
+          createdAt: new Date().toISOString(),
+        };
+        const closing: MonthlyClosingBalance = {
+          id: uuid.v4().toString(),
+          personId: person.id,
+          accountId: account.id,
+          year,
+          month,
+          amount: 8000 + Math.floor(Math.random() * 1000), 
+          createdAt: new Date().toISOString(),
+        };
+        openingBalances.push(opening);
+        closingBalances.push(closing);
+      });
+    });
+  }
+
+  saveOpeningBalances(openingBalances);
+  saveClosingBalances(closingBalances);
+  console.log('✅ Sample opening and closing balances saved successfully!');
+};
+
+
+  const generateSampleTransactions = (
+    categories: Category[],
+    persons: Person[]
+  ): Transaction[] => {
     const now = new Date();
+    const start = new Date(2024, 1); // Feb 2024 (0-based month index)
+
+    const transactions: Transaction[] = [];
+
     let income = 0;
     let expense = 0;
 
-    for (let i = 0; i < 25; i++) {
-      const isIncome = i % 5 === 0;
-      const person = persons[i % persons.length];
-      // Fallback to first account or default
-      const account = person.accounts?.[0] ?? {
-        id: 'P_MISC_ACC',
-        personId: person.id,
-        accountTypeOrName: 'FallbackAccount',
-      };
-      const category = categories[i % categories.length];
-        // Fallback to first subcategory or default
-      const subcategory = category.subcategories?.[i % (category.subcategories?.length || 1)] ?? {
-        id: 'MISC_SUB',
-        name: 'Misc Subcategory',
-        categoryId: category.id,
-      };
+    const monthsDiff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1;
 
-      const amount = isIncome ? 8000 : 2500 + (i * 100);
-      if (isIncome) income += amount; else expense += amount;
+    for (let m = 0; m < monthsDiff; m++) {
+      const date = new Date(start.getFullYear(), start.getMonth() + m, 1);
 
-      transactions.push({
-        id: uuid.v4().toString(),
-        type: isIncome ? 'income' : 'expense',
-        amount,
-        date: new Date(now.getTime() - i * 86400000).toISOString().split('T')[0],
-        categoryId: category.id,
-        subCategoryId: subcategory.id,
-        personId: person.id,
-        accountId: account.id,
-        createdAt: new Date().toISOString(),
-        isTestData: true,
-      } as Transaction);
+      // Add 2 income entries
+      for (let j = 0; j < 2; j++) {
+        const person = persons[(m + j) % persons.length];
+        const account = person.accounts?.[0] ?? {
+          id: 'P_MISC_ACC',
+          personId: person.id,
+          accountTypeOrName: 'FallbackAccount',
+        };
+        const category = categories.find(c => c.name.toLowerCase().includes('income')) ?? categories[0];
+        const subcategory = category.subcategories?.[0] ?? {
+          id: 'MISC_SUB',
+          name: 'Misc Income',
+          categoryId: category.id,
+        };
+
+        const txn: Transaction = {
+          id: uuid.v4().toString(),
+          type: 'income',
+          amount: 7000 + m * 150,
+          date: new Date(date.getFullYear(), date.getMonth(), j + 1).toISOString().split('T')[0],
+          categoryId: category.id,
+          subCategoryId: subcategory.id,
+          personId: person.id,
+          accountId: account.id,
+          isTestData: true,
+          createdAt: new Date().toISOString(),
+        };
+        transactions.push(txn);
+        income += txn.amount;
+      }
+
+      // Add 12 expense entries
+      for (let k = 0; k < 12; k++) {
+        const person = persons[(m + k) % persons.length];
+        const account = person.accounts?.[0] ?? {
+          id: 'P_MISC_ACC',
+          personId: person.id,
+          accountTypeOrName: 'FallbackAccount',
+        };
+        const category = categories.find(c => c.name.toLowerCase().includes('expense')) ?? categories[k % categories.length];
+        const subcategory = category.subcategories?.[k % (category.subcategories?.length || 1)] ?? {
+          id: 'MISC_SUB',
+          name: 'Misc Expense',
+          categoryId: category.id,
+        };
+
+        const txn: Transaction = {
+          id: uuid.v4().toString(),
+          type: 'expense',
+          amount: 2000 + (k * 50),
+          date: new Date(date.getFullYear(), date.getMonth(), (k % 28) + 1).toISOString().split('T')[0],
+          categoryId: category.id,
+          subCategoryId: subcategory.id,
+          personId: person.id,
+          accountId: account.id,
+          isReversible: k === 0, // Make first one reversible
+          isSettled: false,
+          dueDate: k === 0 ? new Date(date.getFullYear(), date.getMonth(), 28).toISOString().split('T')[0] : undefined,
+          isTestData: true,
+          createdAt: new Date().toISOString(),
+        };
+        transactions.push(txn);
+        expense += txn.amount;
+      }
     }
 
+    console.log(`Generated sample data → Income: ₹${income}, Expense: ₹${expense}, Count: ${transactions.length}`);
     return transactions;
   };
 
@@ -223,7 +318,7 @@ const DataManagementScreen = () => {
   };
 
   const deleteTestData = async () => {
-    const cats = (await getAllCategories()).filter(cat => !cat.isTestData);
+    const cats = (await getCategories()).filter(cat => !cat.isTestData);
     const persons = (await getAllPersons()).filter(p => !p.isTestData);
     const txns = (await getAllTransactions()).filter(t => !t.isTestData);
     const recurs = (await getAllRecurringPayments()).filter(r => !r.isTestData);
@@ -236,25 +331,39 @@ const DataManagementScreen = () => {
   };
 
   const deleteCategories = async () => {
-    let categories = await getAllCategories();
-    const misc = categories.find(c => c.name.toLowerCase() === 'misc');
-    const miscSub = misc?.subcategories?.find(s => s.name.toLowerCase() === 'misc_sub');
-    if (!misc || !miscSub) {
-      showToast('MISC and MISC_SUB not found. Cannot proceed.');
-      return;
-    }
-    categories = categories.filter(c => c.name.toLowerCase() === 'misc');
-    await saveCategories(categories);
+  let categories = await getCategories();
+  let misc = categories.find(c => c.name.toLowerCase() === 'misc');
+  let miscSub = misc?.subcategories?.find(s => s.name.toLowerCase() === 'misc_sub');
 
-    const txns = await getAllTransactions();
-    const updated = txns.map(t => ({
-      ...t,
-      categoryId: misc.id,
-      subCategoryId: miscSub.id,
-    }));
-    await saveTransactions(updated);
-    showToast('Categories deleted and transactions mapped to MISC');
-  };
+  if (!misc || !miscSub) {
+    showToast('MISC and MISC_SUB not found. Creating...');
+    const newCategory = await addCategory({ name: 'MISC', subcategories: [] });
+    const newSub = await addSubCategory(newCategory.id, { name: 'MISC_SUB' });
+
+    // Re-fetch after creation
+    categories = await getCategories();
+    misc = categories.find(c => c.name.toLowerCase() === 'misc')!;
+    miscSub = misc?.subcategories?.find(s => s.name.toLowerCase() === 'misc_sub')!;
+  }
+
+  if (!misc || !miscSub) {
+    showToast('Failed to create or retrieve MISC/MISC_SUB. Aborting.');
+    return;
+  }
+
+  const filtered = categories.filter(c => c.name.toLowerCase() === 'misc');
+  await saveCategories(filtered);
+
+  const txns = await getAllTransactions();
+  const updated = txns.map(t => ({
+    ...t,
+    categoryId: misc.id,
+    subCategoryId: miscSub.id,
+  }));
+  await saveTransactions(updated);
+
+  showToast('Categories deleted and transactions mapped to MISC');
+};
 
   const deletePersons = async () => {
     let persons = await getAllPersons();
@@ -288,34 +397,18 @@ const DataManagementScreen = () => {
   };
 
   const deleteAll = async () => {
-    await AsyncStorage.multiRemove([
-      CATEGORY_KEY,
-      PERSON_KEY,
-      TRANSACTION_KEY,
-      RECURRINGPAYEMENTS_KEY,
-      OPENINGBALANCE_KEY,
-    ]);
+    clearAllData();
     showToast('All data wiped');
   };
 
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.header}>Data Management</Text>
-      <TextInput
-        placeholder="Type 'delete data' to confirm"
-        style={styles.input}
-        value={confirmationText}
-        onChangeText={setConfirmationText}
-      />
+
       <TouchableOpacity style={styles.button} onPress={loadTestData}>
         <Text style={styles.buttonText}>1. Load Test Data</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={() => showConfirmation('Delete Test Data', async () => {
-        // add delete logic for isTestData = true only
-      })}>
-        <Text style={styles.buttonText}>2. Delete Test Data</Text>
-      </TouchableOpacity>
 
       <Text style={styles.label}>Type "{CONFIRM_PHRASE}" to confirm destructive actions:</Text>
       <TextInput
@@ -324,10 +417,6 @@ const DataManagementScreen = () => {
         placeholder="Type delete data"
         style={styles.input}
       />
-
-      <TouchableOpacity style={styles.button} onPress={async () => { /* Load test data handler here */ }}>
-        <Text style={styles.btnText}>1. Load Test Data</Text>
-      </TouchableOpacity>
 
       <TouchableOpacity style={styles.button} onPress={() => confirmAndRun(deleteTestData)}>
         <Text style={styles.btnText}>2. Delete Test Data</Text>

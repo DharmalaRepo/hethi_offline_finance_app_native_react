@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { getAppSettings, saveAppSettings } from '../services/settingsService';
+import { getAppSettings, saveAppSettings } from '../services/mockDataService';
 import { AppSettings } from '../models/AppSettings';
 import { getAccounts } from '../services/mockDataService';
 import { getAllPersons } from '../services/mockDataService';
-import { getAllCategories, getSubCategoriesByCategoryId } from '../services/mockDataService';
+import { getCategories, getSubCategoriesByCategoryId } from '../services/mockDataService';
 import { showToast } from '../utils/toastUtils';
 import { Account } from '../models/Account';
 import { Person } from '../models/Person';
@@ -14,14 +14,28 @@ import { Category } from '../models/Category';
 import { SubCategory } from '../models/SubCategory';
 import { useContext } from 'react';
 import { useThemeContext } from '../components/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
+import { MoreStackParamList } from '../navigation/routes'; // Adjust path
+import { StackNavigationProp } from '@react-navigation/stack';
+
 
 const SetupWizardScreen = () => {
-  const [settings, setSettings] = useState<AppSettings>({});
+  
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
   const { toggleTheme } = useThemeContext();
+  const navigation = useNavigation<StackNavigationProp<MoreStackParamList>>();
+  const [settings, setSettings] = useState<AppSettings>({
+    pinEnabled: false,
+    biometricEnabled: false,
+    autoLockEnabled: false,
+    autoLockTime: 5,
+    securityQuestionEnabled: false,
+    securityQuestion: '',
+    securityAnswer: '',
+  });
 
   useEffect(() => {
     loadInitialData();
@@ -33,7 +47,7 @@ const SetupWizardScreen = () => {
 
     const accs = await getAccounts();
     const pers = await getAllPersons();
-    const cats = await getAllCategories();
+    const cats = await getCategories();
 
     setAccounts(accs);
     setPersons(pers);
@@ -54,57 +68,7 @@ const SetupWizardScreen = () => {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>🧭 Setup Wizard</Text>
 
-      <Text style={styles.label}>Default Account</Text>
-      <Picker
-        selectedValue={settings.defaultAccountId}
-        onValueChange={(val) => setSettings({ ...settings, defaultAccountId: val })}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select Account" value="" />
-        {accounts.map((a) => (
-          <Picker.Item key={a.id} label={a.accountTypeOrName} value={a.id} />
-        ))}
-      </Picker>
 
-      <Text style={styles.label}>Default Person</Text>
-      <Picker
-        selectedValue={settings.defaultPersonId}
-        onValueChange={(val) => setSettings({ ...settings, defaultPersonId: val })}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select Person" value="" />
-        {persons.map((p) => (
-          <Picker.Item key={p.id} label={p.name} value={p.id} />
-        ))}
-      </Picker>
-
-      <Text style={styles.label}>Default Category</Text>
-      <Picker
-        selectedValue={settings.defaultCategoryId}
-        onValueChange={async (val) => {
-          setSettings({ ...settings, defaultCategoryId: val, defaultSubCategoryId: '' });
-          const subs = await getSubCategoriesByCategoryId({ categoryId: val });
-          setSubcategories(subs);
-        }}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select Category" value="" />
-        {categories.map((c) => (
-          <Picker.Item key={c.id} label={c.name} value={c.id} />
-        ))}
-      </Picker>
-
-      <Text style={styles.label}>Default Subcategory</Text>
-      <Picker
-        selectedValue={settings.defaultSubCategoryId}
-        onValueChange={(val) => setSettings({ ...settings, defaultSubCategoryId: val })}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select Subcategory" value="" />
-        {subcategories.map((sc) => (
-          <Picker.Item key={sc.id} label={sc.name} value={sc.id} />
-        ))}
-      </Picker>
 
      <View style={styles.switchRow}>
         <Text style={styles.label}>Enable Dark Theme</Text>
@@ -155,6 +119,40 @@ const SetupWizardScreen = () => {
         onChangeText={(val) => setSettings({ ...settings, profileNotes: val })}
         multiline
       />
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🔐 Security Settings</Text>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Enable PIN Protection</Text>
+          <Switch
+            value={settings.pinEnabled || false}
+            onValueChange={(val) =>
+              setSettings({ ...settings, pinEnabled: val })
+            }
+          />
+        </View>
+
+        {settings.pinEnabled && (
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => {
+              navigation.navigate('SetPin');
+              showToast('info', 'Use PIN Protection screen to set/change your PIN');
+            }}
+          >
+            <Text style={styles.buttonText}>Set / Change PIN</Text>
+          </TouchableOpacity>
+        )}
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Enable Biometric Unlock</Text>
+          <Switch
+            value={settings.biometricEnabled || false}
+            onValueChange={(val) => setSettings({ ...settings, biometricEnabled: val })}
+          />
+        </View>
+        
+      </View>
 
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
         <Text style={styles.saveBtnText}>💾 Save Settings</Text>
@@ -207,6 +205,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  section: {
+  marginTop: 24,
+  paddingBottom: 16,
+  borderBottomWidth: 1,
+  borderColor: '#ccc',
+},
+sectionTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 10,
+},
+button: {
+  backgroundColor: '#0984e3',
+  padding: 10,
+  borderRadius: 8,
+  marginTop: 10,
+  alignItems: 'center',
+},
+buttonText: {
+  color: 'white',
+  fontWeight: 'bold',
+},
 });
 
 export default SetupWizardScreen;

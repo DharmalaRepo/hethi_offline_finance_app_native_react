@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import CheckBox from '@react-native-community/checkbox';
 import { Picker } from '@react-native-picker/picker';
 import uuid from 'react-native-uuid';
@@ -11,13 +12,13 @@ import { Account } from '../models/Account';
 import { Transaction } from '../models/Transaction';
 import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
-import {calculateSummary,  getUniqueYearsMonths,  getFilteredBalances,  getFilteredTransactions, generatePersonAccountSummary} from '../utils/balanceSheetUtils';
+import {calculateSummary,  getUniqueYearsMonths,  getFilteredBalances,  
+  getFilteredTransactions, generatePersonAccountSummary} from '../utils/balanceSheetUtils';
 import { Alert } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import MonthPicker from 'react-native-month-year-picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Modal } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const BalanceSheetScreen = () => {
   const today = new Date();
@@ -129,6 +130,11 @@ const BalanceSheetScreen = () => {
     loadData();
   }, []);
 
+  const reloadData = () => {
+      loadData();
+      console.log("Reloading Monthly DashBoard sheets...");
+      };
+
   useEffect(() => {
     if (selectedPersonId) {
       const person = persons.find(p => p.id === selectedPersonId);
@@ -144,7 +150,7 @@ const BalanceSheetScreen = () => {
     const cb = await getClosingBalances();
     const ps = await getPersons();
 
-    setTransactions(txns);
+    setTransactions(Array.isArray(txns) ? txns : []);
     setOpeningBalances(ob);
     setClosingBalances(cb);
     setPersons(ps);
@@ -162,9 +168,22 @@ const BalanceSheetScreen = () => {
     setModalVisible(true);
   };
 
+
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}> Monthly Balance Sheet</Text>
+      <View style={styles.header}>
+                  <View style={styles.headerLeft}>
+                    <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                    <Text style={styles.title}>Balance Sheet Dashboard</Text>
+                  </View>
+      
+                  <View style={styles.headerRight}>
+                    <TouchableOpacity onPress={reloadData} style={styles.iconButton}>
+                      <Ionicons name="refresh" size={22} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
       {/* Header Section Data, Persons and accounts */}
       <View style={styles.filterRow}>
@@ -173,6 +192,7 @@ const BalanceSheetScreen = () => {
           <Ionicons name="calendar" size={18} color="#1a3c70" style={{ marginRight: 6 }} />
           <Text style={styles.periodText}>{month}/{year}</Text>
         </TouchableOpacity>
+
 
         {/* Person Picker */}
         <View style={styles.dropdownWrapper}>
@@ -385,7 +405,7 @@ const BalanceSheetScreen = () => {
         </View>
       </View>
 
-      
+
       <BalanceSheetModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -407,16 +427,50 @@ const BalanceSheetScreen = () => {
           loadData(); // Call this independently after state update
         }}
       />
+
+      {showPicker && (
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Month & Year</Text>
+
+            {/* Month Picker */}
+            <Picker
+              selectedValue={month}
+              onValueChange={(value) => setMonth(value)}
+              style={styles.picker}
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <Picker.Item key={i + 1} label={`Month ${i + 1}`} value={i + 1} />
+              ))}
+            </Picker>
+
+            {/* Year Picker */}
+            <Picker
+              selectedValue={year}
+              onValueChange={(value) => setYear(value)}
+              style={styles.picker}
+            >
+              {Array.from({ length: 10 }, (_, i) => {
+                const y = new Date().getFullYear() - 5 + i;
+                return <Picker.Item key={y} label={`${y}`} value={y} />;
+              })}
+            </Picker>
+
+            <TouchableOpacity style={styles.doneButton} onPress={() => setShowPicker(false)}>
+              <Text style={styles.doneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
   subheader: { fontSize: 18, fontWeight: 'bold' },
   section: { marginBottom: 20 },
-  picker: { flex: 1, height: 50 },
   filterRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionContainer: {
@@ -425,7 +479,59 @@ const styles = StyleSheet.create({
   padding: 12,
   marginBottom: 16,
 },
+   container: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: '#ffffff',
+  },
+screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
 
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
 sectionHeader: {
   flexDirection: 'row',
   justifyContent: 'space-between',
@@ -519,7 +625,40 @@ dropdownWrapper: {
   borderRadius: 6,
   paddingHorizontal: 6,
   flex: 1,
-},
+},modalContainer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  picker: {
+    width: '100%',
+    marginBottom: 10,
+  },
+  doneButton: {
+    backgroundColor: '#0984e3',
+    padding: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  doneText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });
 
 export default BalanceSheetScreen;

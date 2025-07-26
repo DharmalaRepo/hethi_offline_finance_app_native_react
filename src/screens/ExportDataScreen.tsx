@@ -11,11 +11,15 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import {
   exportAllData,
-  getAllCategories,
+  getCategories,
   getAllPersons,
   getAllTransactions,
   getAllRecurringPayments,
 } from '../services/mockDataService';
+import CryptoJS from 'crypto-js';
+
+const ENCRYPTION_KEY = 'HETHI_DATA_ENCRYPTION_KEY'; // Ideally store this securely or derive from user input
+
 
 const ExportDataScreen = () => {
   const [exporting, setExporting] = useState(false);
@@ -29,7 +33,7 @@ const ExportDataScreen = () => {
           data = await exportAllData();
           break;
         case 'categories':
-          data = await getAllCategories();
+          data = await getCategories();
           break;
         case 'persons':
           data = await getAllPersons();
@@ -44,8 +48,15 @@ const ExportDataScreen = () => {
           throw new Error('Invalid export type');
       }
 
-      const fileUri = `${FileSystem.documentDirectory}${type}_export.json`;
-      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(data, null, 2));
+     // Step 1: Stringify the data
+      const jsonString = JSON.stringify(data, null, 2);
+
+      // Step 2: Encrypt the string
+      const encryptedData = CryptoJS.AES.encrypt(jsonString, ENCRYPTION_KEY).toString();
+
+      // Step 3: Save encrypted data to file
+      const fileUri = `${FileSystem.documentDirectory}${type}_export_encrypted.json`;
+      await FileSystem.writeAsStringAsync(fileUri, encryptedData);
 
       await Sharing.shareAsync(fileUri, {
         mimeType: 'application/json',

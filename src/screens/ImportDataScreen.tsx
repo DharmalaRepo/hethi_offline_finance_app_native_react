@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'rea
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Toast from 'react-native-toast-message';
+import CryptoJS from 'crypto-js';
 
 import {
   importCategories,
@@ -29,7 +30,11 @@ const ImportDataScreen = () => {
         setFileName(file.name);
 
         const fileContent = await FileSystem.readAsStringAsync(file.uri);
-        const parsedData = JSON.parse(fileContent);
+        const ENCRYPTION_KEY = 'HETHI_DATA_ENCRYPTION_KEY';
+
+        const decryptedBytes = CryptoJS.AES.decrypt(encryptedString, ENCRYPTION_KEY);
+        const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
+        const parsedJson = JSON.parse(decryptedText);
         setJsonData(parsedData);
 
         Toast.show({ type: 'success', text1: 'File Loaded Successfully' });

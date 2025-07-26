@@ -165,19 +165,6 @@ exportButtonRow: {
   flexDirection: 'row',
   gap: 10, // or use marginRight on each button if needed
 },
-
-exportButton: {
-  backgroundColor: '#007bff',
-  paddingVertical: 6,
-  paddingHorizontal: 12,
-  borderRadius: 6,
-  marginLeft: 8,
-},
-
-exportText: {
-  color: '#fff',
-  fontWeight: '600',
-},
 });
 
 export default styles;

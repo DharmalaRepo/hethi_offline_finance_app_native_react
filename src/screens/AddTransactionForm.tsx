@@ -96,7 +96,7 @@ const AddTransactionForm: React.FC<Props> = ({ categories = [],
         isAutoReverseEntry,
       };
       onSave(transaction);
-      console.log('Transaction Submitted:', transaction);
+      //console.log('Transaction Submitted:', transaction);
       ToastAndroid.show('Transaction saved successfully!', ToastAndroid.SHORT);
       handleClear();
     } catch (err: any) {

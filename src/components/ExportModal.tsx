@@ -22,6 +22,7 @@ interface ExportModalProps {
   categoryMap: Record<string, string>;
   subCategoryMap: Record<string, string>;
   personsMap: Record<string, string>;
+  accountsMap: Record<string, string>;
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({
@@ -31,12 +32,14 @@ const ExportModal: React.FC<ExportModalProps> = ({
   categoryMap,
   subCategoryMap,
   personsMap,
+  accountsMap,
 }) => {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
     'date',
     'category',
     'subCategory',
     'person',
+    'account',
     'amount',
   ]);
   const [selectedFormat, setSelectedFormat] = useState<'csv' | 'excel' | 'pdf'>('csv');
@@ -60,6 +63,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
         return tx.subCategoryId ? subCategoryMap[tx.subCategoryId] || tx.subCategoryId : '';
       case 'person':
         return personsMap[tx.personId] || tx.personId;
+      case 'account':
+        return accountsMap[tx.accountId] || tx.accountId;
       case 'amount':
         return tx.amount.toString();
       default:
@@ -158,7 +163,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
           <Text style={styles.section}>Select Columns</Text>
           <ScrollView>
-            {['date', 'category', 'subCategory', 'person', 'amount', 'note'].map((col) => (
+            {['date', 'category', 'subCategory', 'person', 'account', 'amount', 'note'].map((col) => (
               <View key={col} style={styles.row}>
                 <Text>{col}</Text>
                 <Switch
