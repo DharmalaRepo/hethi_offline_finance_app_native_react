@@ -39,7 +39,7 @@ const BottomTabNavigator = () => {
             case 'BalanceSheets':
               iconName = 'document-text-outline';
               break;
-            case 'MoreNavigator':
+            case 'More':
               iconName = 'menu-outline';
               break;
           }
@@ -56,7 +56,7 @@ const BottomTabNavigator = () => {
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Reports" component={ReportsScreen} />
       <Tab.Screen name="BalanceSheets" component={BalanceSheetScreen} />
-      <Tab.Screen name="MoreNavigator" component={MoreNavigator} />
+      <Tab.Screen name="More" component={MoreNavigator} />
 
     </Tab.Navigator>
   );

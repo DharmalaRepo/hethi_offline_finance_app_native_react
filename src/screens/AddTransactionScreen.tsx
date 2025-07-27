@@ -26,10 +26,15 @@ const AddTransactionScreen = () => {
     setAccounts(loadedAccounts || []);
   };
 
-  const handleSave = (transaction: Transaction) => {
-    console.log('Transaction Saved:', transaction);
-    // Save to local storage or backend
+  const handleSave = (tx: Omit<Transaction, 'id' | 'createdAt'>) => {
+  const newTransaction: Transaction = {
+    ...tx,
+    id: '1234', // or use uuid()
+    createdAt: new Date().toISOString(),
   };
+
+  // Save or update logic...
+};
 
   return (
     <AddTransactionForm

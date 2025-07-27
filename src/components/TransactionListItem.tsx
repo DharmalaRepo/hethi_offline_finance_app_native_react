@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Transaction } from '../models/Transaction';
+import { useAppContext  } from '../context/AppContext';
 
 interface Props {
   transaction: Transaction;
@@ -19,6 +20,8 @@ const TransactionListItem: React.FC<Props> = ({
   subCategoryName,
 }) => {
   const amountColor = transaction.type === 'income' ? '#28a745' : '#dc3545';
+  const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
+  
 
   return (
     <View style={styles.row}>
@@ -38,7 +41,7 @@ const TransactionListItem: React.FC<Props> = ({
       <Text style={styles.cell}>{categoryName}</Text>
       <Text style={styles.cell}>{subCategoryName || ''}</Text>
       <Text style={[styles.cell, styles.amount, { color: amountColor }]}>
-        ₹ {transaction.amount}
+        {showSensitiveData ? `₹ ${transaction.amount}` : '₹ ****'}
       </Text>
       <TouchableOpacity onPress={() => onEdit(transaction)} style={styles.iconBtn}>
         <Ionicons name="create-outline" size={20} color="#007bff" />

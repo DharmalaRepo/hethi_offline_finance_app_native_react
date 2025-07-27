@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, ScrollView
+  View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, ScrollView, Image
 } from 'react-native';
 import {
   getPin,
@@ -92,7 +92,12 @@ const PinProtectionScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>🔐 PIN Protection</Text>
+          <View style={styles.header}>
+                   <View style={styles.headerLeft}>
+                      <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                      <Text style={styles.title}> 🔐 PIN Protection</Text>
+                    </View>       
+                </View> 
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
@@ -216,6 +221,60 @@ const styles = StyleSheet.create({
     backgroundColor: '#f6faff',
     flexGrow: 1,
   },
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
   heading: {
     fontSize: 22,
     fontWeight: 'bold',

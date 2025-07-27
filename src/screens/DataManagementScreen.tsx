@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, ScrollView, ToastAndroid } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, ScrollView, ToastAndroid, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import { Category } from '../models/Category';
@@ -403,7 +403,12 @@ const DataManagementScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Data Management</Text>
+                <View style={styles.header}>
+                         <View style={styles.headerLeft}>
+                            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                            <Text style={styles.title}> Data Management</Text>
+                          </View>       
+                      </View> 
 
       <TouchableOpacity style={styles.button} onPress={loadTestData}>
         <Text style={styles.buttonText}>1. Load Test Data</Text>
@@ -448,7 +453,67 @@ const DataManagementScreen = () => {
 
 const styles = StyleSheet.create({
   container: { padding: 16 },
-  header: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+  heading: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+    color: '#2c3e50',
+  },
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -467,12 +532,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
-    color: '#333',
   },
 });
 

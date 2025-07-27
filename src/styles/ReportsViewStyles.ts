@@ -3,8 +3,177 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8fbff',
+    flex: 1,
   },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2d3436',
+  },
+  monthRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  monthPicker: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginHorizontal: 5,
+    padding: 8,
+    elevation: 2,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#636e72',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 12,
+    marginHorizontal: 5,
+    elevation: 3,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    color: '#2d3436',
+  },
+  income: {
+    color: '#27ae60',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  expense: {
+    color: '#e74c3c',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  savings: {
+    color: '#2c3e50',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  comparisonHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  subheading: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2d3436',
+  },
+  exportButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  exportButton: {
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 10,
+  },
+  exportText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  tableContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    elevation: 2,
+    marginBottom: 16, 
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: '#dfe6e9',
+  },
+  tableHeaderCell: {
+    flex: 1,
+    fontWeight: 'bold',
+    color: '#2d3436',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderColor: '#dcdde1',
+  },
+  tableCell: {
+    flex: 1,
+    fontSize: 13,
+    color: '#2d3436',
+  },
+  note: {
+    marginTop: 20,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    color: '#636e72',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
+iconButton: {
+  marginLeft: 12,
+},
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
   heading: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -48,23 +217,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#007bff',
     color: '#fff',
   },
-  subheading: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginVertical: 10,
-  },
   txnRow: {
     backgroundColor: '#f2f2f2',
     padding: 10,
     borderRadius: 8,
     marginBottom: 8,
-  },
-  // 👇 Add these missing styles
-  tableContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    marginBottom: 12,
   },
   tableRowHeader: {
     flexDirection: 'row',
@@ -79,34 +236,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  tableCell: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  // Add to ReportsViewStyles.ts
-
-toggleRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginVertical: 10,
-  paddingHorizontal: 10,
-},
-
-label: {
-  fontSize: 16,
-  fontWeight: '500',
-  color: '#333',
-},
-
 row: {
   flexDirection: 'row',
   justifyContent: 'space-between',
@@ -122,13 +251,6 @@ col: {
   textAlign: 'center',
   fontSize: 14,
 },
-
-note: {
-  fontSize: 14,
-  color: '#666',
-  fontStyle: 'italic',
-  marginTop: 4,
-},
 exportButtons: {
   flexDirection: 'row',
   justifyContent: 'center',
@@ -139,31 +261,6 @@ exportBtn: {
   backgroundColor: '#007bff',
   padding: 10,
   borderRadius: 8,
-},
-exportButton: {
-  backgroundColor: '#007bff',
-  paddingVertical: 10,
-  paddingHorizontal: 20,
-  marginTop: 15,
-  borderRadius: 8,
-  alignItems: 'center',
-  alignSelf: 'flex-start'
-},
-exportText: {
-  color: '#fff',
-  fontWeight: 'bold'
-},
-comparisonHeaderRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 10,
-  flexWrap: 'wrap',
-},
-
-exportButtonRow: {
-  flexDirection: 'row',
-  gap: 10, // or use marginRight on each button if needed
 },
 });
 

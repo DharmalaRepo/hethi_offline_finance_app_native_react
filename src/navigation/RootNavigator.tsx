@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, SafeAreaView, Dimensions, Linking } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TextTicker from 'react-native-text-ticker';
 import BottomTabNavigator from './BottomTabNavigator';

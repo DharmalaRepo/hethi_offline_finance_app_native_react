@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  Alert, Image 
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -72,7 +72,12 @@ const ExportDataScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Export Data</Text>
+              <View style={styles.header}>
+                                       <View style={styles.headerLeft}>
+                                          <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                                          <Text style={styles.title}> Export Data</Text>
+                                        </View>       
+                                    </View> 
       <TouchableOpacity style={styles.button} onPress={() => handleExport('all')} disabled={exporting}>
         <Text style={styles.buttonText}>Export All Data</Text>
       </TouchableOpacity>
@@ -97,18 +102,68 @@ const ExportDataScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#f9f9f9',
-    flexGrow: 1,
-    alignItems: 'center',
+  container: { padding: 16, backgroundColor: '#f9f9f9', flexGrow: 1 },
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
   },
-  title: {
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+  heading: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 24,
-    color: '#007bff',
+    marginBottom: 16,
+    textAlign: 'center',
+    color: '#2c3e50',
   },
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
   button: {
     width: '90%',
     backgroundColor: '#007bff',

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+
 import { ScrollView } from 'react-native-gesture-handler';
 import RNPickerSelect from 'react-native-picker-select';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
@@ -6,14 +7,9 @@ import { Picker } from '@react-native-picker/picker';
 import * as Sharing from 'expo-sharing'; // If using Expo
 import * as FileSystem from 'expo-file-system';
 import * as Print from 'expo-print';
-
+import { Ionicons } from '@expo/vector-icons'; // Or react-native-vector-icons
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  FlatList
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator, FlatList, Image 
 } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
@@ -25,6 +21,7 @@ import { format, parseISO } from 'date-fns';
 import styles from '../styles/ReportsViewStyles';
 import { Switch, StyleSheet } from 'react-native';
 import { getTransactionsForMonth } from '../services/mockDataService';
+import { useAppContext  } from '../context/AppContext';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -36,6 +33,7 @@ const ReportsView = () => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [loading, setLoading] = useState(false);
+  const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
   const chartColors = [
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
   ];
@@ -262,33 +260,29 @@ const exportToPDF = async (
   const summary2 = calculateSummary(txns2);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}> Reports Dashboard</Text>
+    <ScrollView contentContainerStyle={{ padding: 16 }}>
 
-        <TouchableOpacity
-          onPress={reloadReports}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: '#007bff',
-            borderRadius: 6,
-            paddingVertical: 4,
-            paddingHorizontal: 8,
-            backgroundColor: '#e6f0ff',
-          }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6 }}>⟳</Text>
-          <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
-        </TouchableOpacity>
-      </View>
+      <View style={styles.header}>
+         <View style={styles.headerLeft}>
+            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+            <Text style={styles.title}> Reports Dashboard</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={reloadReports} style={styles.iconButton}>
+              <Ionicons name="refresh" size={22} color="#e6f0ff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleSensitiveData} style={styles.iconButton}>
+              <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>           
+      </View>   
+
 
       {/* Summary */}
       <View style={styles.card}>
-        <Text>Total Income: ₹{summary.income}</Text>
-        <Text>Total Expense: ₹{summary.expense}</Text>
-        <Text style={{ fontWeight: 'bold' }}>Net Savings: ₹{summary.savings}</Text>
+        <Text>Total Income: {showSensitiveData ? `₹ ${summary.income}` : '₹ ****'}</Text>
+        <Text>Total Expense: {showSensitiveData ? `₹ ${summary.expense}` : '₹ ****'}</Text>
+        <Text style={{ fontWeight: 'bold' }}>Total Savings: {showSensitiveData ? `₹ ${summary.savings}` : '₹ ****'}</Text>
       </View>
 
       {/* Month Picker */}
@@ -319,168 +313,161 @@ const exportToPDF = async (
         </View>
       </View>
 
-      {/* Pie Chart */}
-      {chartData.length > 0 && (
-        <>
-          <Text style={styles.subheading}>Spending Breakdown</Text>          
-          <PieChart
-            data={chartData}
-            width={screenWidth - 40}
-            height={220}
-            accessor="amount"
-            backgroundColor="transparent"
-            paddingLeft="15"
-            absolute
-            chartConfig={{
-              color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,  // 👈 Required
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            }}
-          />
-        </>
-      )}
-
+      <View style={styles.tableContainer}>
+        {/* Pie Chart */}
+        {chartData.length > 0 && (
+          <>
+            <Text style={styles.subheading}>Spending Breakdown</Text>          
+            <PieChart
+              data={chartData}
+              width={screenWidth - 40}
+              height={220}
+              accessor="amount"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+              chartConfig={{
+                color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,  // 👈 Required
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              }}
+            />
+          </>
+        )}
+      </View>
+      <View style={styles.tableContainer}>
       {/* Monthly Comparison */}
-    <View style={styles.container}>
-      {/* Toggle */}
-      <View style={styles.toggleRow}>
-        <Text style={styles.label}>Enable Monthly Comparison</Text>
-        <Switch value={comparisonEnabled} onValueChange={setComparisonEnabled} />
-      </View>
-
-      {/* Month Pickers */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-        <View style={{ flex: 1, marginRight: 5 }}>
-          <Text style={styles.label}>Month 1</Text>
-          <Picker selectedValue={month1} onValueChange={setMonth1}>
-            {monthOptions.map(m => (
-              <Picker.Item key={m} label={m} value={m} />
-            ))}
-          </Picker>
-        </View>
-        <View style={{ flex: 1, marginLeft: 5 }}>
-          <Text style={styles.label}>Month 2</Text>
-          <Picker selectedValue={month2} onValueChange={setMonth2}>
-            {monthOptions.map(m => (
-              <Picker.Item key={m} label={m} value={m} />
-            ))}
-          </Picker>
-        </View>
-      </View>
-
-      {/* Comparison Section */}
-      {comparisonEnabled ? (
-        <>
-          {/* Monthly Summary */}
-          <View style={styles.row}>
-            <View style={styles.col}>
-              <Text>Income: ₹{summary1.income}</Text>
-              <Text>Expense: ₹{summary1.expense}</Text>
-              <Text style={{ fontWeight: 'bold' }}>Savings: ₹{summary1.savings}</Text>
-            </View>
-            <View style={styles.col}>
-              <Text>Income: ₹{summary2.income}</Text>
-              <Text>Expense: ₹{summary2.expense}</Text>
-              <Text style={{ fontWeight: 'bold' }}>Savings: ₹{summary2.savings}</Text>
-            </View>
+          {/* Toggle */}
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>📊 Enable Monthly Comparison</Text>
+            <Switch value={comparisonEnabled} onValueChange={setComparisonEnabled} />
           </View>
 
-          {/* Header and Export Buttons */}
-          <View style={styles.comparisonHeaderRow}>
-            <Text style={styles.subheading}>📊 Category Comparison</Text>
-            <View style={styles.exportButtonRow}>
-              <TouchableOpacity
-                style={styles.exportButton}
-                onPress={() => exportToPDF(summary1, summary2, month1, month2)}
-              >
-                <Text style={styles.exportText}>Export PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.exportButton}
-                onPress={() => exportToCSV(summary1, summary2, month1, month2)}
-              >
-                <Text style={styles.exportText}>Export CSV</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Category Comparison Table */}
-          <View style={styles.tableContainer}>
-            <View style={styles.tableRowHeader}>
-              <Text style={styles.tableCellHeader}>Category</Text>
-              <Text style={styles.tableCellHeader}>{month1}</Text>
-              <Text style={styles.tableCellHeader}>{month2}</Text>
-            </View>
-
-            {categories.map(cat => {
-              const m1Total = txns1
-                .filter(t => t.categoryId === cat.id)
-                .reduce((sum, t) => sum + t.amount, 0);
-              const m2Total = txns2
-                .filter(t => t.categoryId === cat.id)
-                .reduce((sum, t) => sum + t.amount, 0);
-
-              if (m1Total === 0 && m2Total === 0) return null;
-
-              return (
-                <View key={cat.id} style={styles.tableRow}>
-                  <Text style={styles.tableCell}>{cat.name}</Text>
-                  <Text style={[styles.tableCell, { color: 'blue' }]}>₹{m1Total}</Text>
-                  <Text style={[styles.tableCell, { color: 'green' }]}>₹{m2Total}</Text>
+          {comparisonEnabled ? (
+            <>
+              {/* Month Pickers */}
+              <View style={styles.monthRow}>
+                <View style={styles.monthPicker}>
+                  <Text style={styles.label}>Month 1</Text>
+                  <Picker selectedValue={month1} onValueChange={setMonth1}>
+                    {monthOptions.map(m => (
+                      <Picker.Item key={m} label={m} value={m} />
+                    ))}
+                  </Picker>
                 </View>
-              );
-            })}
-          </View>
-        </>
-      ) : (
-        <Text style={styles.note}>
-          Comparison is turned off. Showing only selected month data in Reports.
-        </Text>
-      )}
-    </View>
+                <View style={styles.monthPicker}>
+                  <Text style={styles.label}>Month 2</Text>
+                  <Picker selectedValue={month2} onValueChange={setMonth2}>
+                    {monthOptions.map(m => (
+                      <Picker.Item key={m} label={m} value={m} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
 
+              {/* Monthly Summary */}
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryTitle}>{month1}</Text>
+                  <Text style={styles.income}>Income: {showSensitiveData ? `₹ ${summary1.income}` : '₹ ****'}</Text>
+                  <Text style={styles.expense}>Expense: {showSensitiveData ? `₹ ${summary1.expense}` : '₹ ****'}</Text>
+                  <Text style={styles.savings}>Savings: {showSensitiveData ? `₹ ${summary1.savings}` : '₹ ****'}</Text>
+                </View>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryTitle}>{month2}</Text>
+                  <Text style={styles.income}>Income: {showSensitiveData ? `₹ ${summary2.income}` : '₹ ****'}</Text>
+                  <Text style={styles.expense}>Expense: {showSensitiveData ? `₹ ${summary2.expense}` : '₹ ****'}</Text>
+                  <Text style={styles.savings}>Savings: {showSensitiveData ? `₹ ${summary2.savings}` : '₹ ****'}</Text>
+                </View>
+              </View>
 
+              {/* Header & Export */}
+              <View style={styles.comparisonHeaderRow}>
+                <Text style={styles.subheading}> Category Comp</Text>
+                <View style={styles.exportButtonRow}>
+                  <TouchableOpacity style={styles.exportButton} onPress={() => exportToPDF(summary1, summary2, month1, month2)}>
+                    <Text style={styles.exportText}>PDF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.exportButton} onPress={() => exportToCSV(summary1, summary2, month1, month2)}>
+                    <Text style={styles.exportText}>CSV</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
+              {/* Table */}
+              <View style={styles.tableContainer}>
+                <View style={styles.tableHeaderRow}>
+                  <Text style={styles.tableHeaderCell}>Category</Text>
+                  <Text style={styles.tableHeaderCell}>{month1}</Text>
+                  <Text style={styles.tableHeaderCell}>{month2}</Text>
+                </View>
 
-      {/* Transactions */}
-      <Text style={styles.subheading}>Transactions</Text>
-       {loading ? (
-         <ActivityIndicator size="large" color="#007bff" />
-       ) : filteredTxns.length === 0 ? (
-         <Text style={{ textAlign: 'center', marginVertical: 10 }}>No transactions found</Text>
-       ) : (
-         <View style={styles.tableContainer}>
-           {/* Table Headers */}
-           <View style={styles.tableRowHeader}>
-             <Text style={styles.tableCellHeader}>Date</Text>
-             <Text style={styles.tableCellHeader}>Category</Text>
-             <Text style={styles.tableCellHeader}>Subcategory</Text>
-             <Text style={styles.tableCellHeader}>Amount</Text>
-           </View>
+                {categories.map(cat => {
+                  const m1Total = txns1.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.amount, 0);
+                  const m2Total = txns2.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.amount, 0);
+                  if (m1Total === 0 && m2Total === 0) return null;
 
-           {/* Table Rows */}
-           {filteredTxns.map(txn => {
-             const categoryName =
-               categories.find(cat => cat.id === txn.categoryId)?.name || txn.categoryId;
-             const subcategoryName =
-               subcategories.find(sub => sub.id === txn.subCategoryId)?.name || txn.subCategoryId;
-             return (
-               <View key={txn.id} style={styles.tableRow}>
-                 <Text style={styles.tableCell}>{txn.date}</Text>
-                 <Text style={styles.tableCell}>{categoryName}</Text>
-                 <Text style={styles.tableCell}>{subcategoryName}</Text>
-                 <Text
-                   style={[
-                     styles.tableCell,
-                     { color: txn.type === 'income' ? 'green' : 'red' },
-                   ]}
-                 >
-                   ₹{txn.amount}
-                 </Text>
-               </View>
-             );
-           })}
-         </View>
-       )}
+                  return (
+                    <View key={cat.id} style={styles.tableRow}>
+                      <Text style={styles.tableCell}>{cat.name}</Text>
+                      <Text style={[styles.tableCell, { color: '#0984e3' }]}>
+                        {showSensitiveData ? `₹ ${m1Total}` : '₹ ****'}
+                      </Text>
+                      <Text style={[styles.tableCell, { color: '#00b894' }]}>
+                        {showSensitiveData ? `₹ ${m2Total}` : '₹ ****'}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          ) : (
+            <Text style={styles.note}>
+              ℹ️ Comparison is turned off. Reports are shown only for the selected month.
+            </Text>
+          )}
+       </View>
+       <View style={styles.tableContainer}>
+          {/* Transactions */}
+          <Text style={styles.subheading}>Transactions</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#007bff" />
+          ) : filteredTxns.length === 0 ? (
+            <Text style={{ textAlign: 'center', marginVertical: 10 }}>No transactions found</Text>
+          ) : (
+            <View style={styles.tableContainer}>
+              {/* Table Headers */}
+              <View style={styles.tableRowHeader}>
+                <Text style={styles.tableCellHeader}>Date</Text>
+                <Text style={styles.tableCellHeader}>Category</Text>
+                <Text style={styles.tableCellHeader}>Subcategory</Text>
+                <Text style={styles.tableCellHeader}>Amount</Text>
+              </View>
+
+              {/* Table Rows */}
+              {filteredTxns.map(txn => {
+                const categoryName =
+                  categories.find(cat => cat.id === txn.categoryId)?.name || txn.categoryId;
+                const subcategoryName =
+                  subcategories.find(sub => sub.id === txn.subCategoryId)?.name || txn.subCategoryId;
+                return (
+                  <View key={txn.id} style={styles.tableRow}>
+                    <Text style={styles.tableCell}>{txn.date}</Text>
+                    <Text style={styles.tableCell}>{categoryName}</Text>
+                    <Text style={styles.tableCell}>{subcategoryName}</Text>
+                    <Text
+                      style={[
+                        styles.tableCell,
+                        { color: txn.type === 'income' ? 'green' : 'red' },
+                      ]}
+                    >
+                      {showSensitiveData ? `₹ ${txn.amount}` : '₹ ****'}₹
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
     </ScrollView>
   );
 };

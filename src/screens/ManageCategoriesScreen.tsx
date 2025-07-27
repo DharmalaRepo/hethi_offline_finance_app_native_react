@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
-  TextInput,
+  TextInput, Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -166,20 +166,17 @@ const reloadConfig = async () => {
 
   return (
     <View style={styles.container}>
-
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-      <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}>Manage Categories</Text>
-      <TouchableOpacity
-              onPress={reloadConfig}
-              style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#007bff',
-                borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#e6f0ff', }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6, }}>
-                ⟳
-              </Text>
-              <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
-      </TouchableOpacity>
-    </View>
+                <View style={styles.header}>
+                         <View style={styles.headerLeft}>
+                            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                            <Text style={styles.title}> Menu Categories</Text>
+                          </View>
+                          <View style={styles.headerRight}>
+                            <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
+                              <Ionicons name="refresh" size={22} color="#e6f0ff" />
+                            </TouchableOpacity>
+                          </View>        
+                      </View> 
 
       <TextInput
         placeholder="Search categories or subcategories..."
@@ -287,6 +284,69 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f7ff',
     padding: 16,
   },
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+  heading: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+    color: '#2c3e50',
+  },
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+iconButton: {
+  marginLeft: 12,
+},
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
   searchBox: {
     backgroundColor: '#fff',
     borderRadius: 8,

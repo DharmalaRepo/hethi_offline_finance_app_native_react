@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image  } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Toast from 'react-native-toast-message';
@@ -32,10 +32,10 @@ const ImportDataScreen = () => {
         const fileContent = await FileSystem.readAsStringAsync(file.uri);
         const ENCRYPTION_KEY = 'HETHI_DATA_ENCRYPTION_KEY';
 
-        const decryptedBytes = CryptoJS.AES.decrypt(encryptedString, ENCRYPTION_KEY);
+        const decryptedBytes = CryptoJS.AES.decrypt(fileContent, ENCRYPTION_KEY);
         const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
         const parsedJson = JSON.parse(decryptedText);
-        setJsonData(parsedData);
+        setJsonData(parsedJson);
 
         Toast.show({ type: 'success', text1: 'File Loaded Successfully' });
       }
@@ -82,7 +82,12 @@ const ImportDataScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>📥 Import Backup Data</Text>
+                <View style={styles.header}>
+                         <View style={styles.headerLeft}>
+                            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                            <Text style={styles.title}> 📥 Import Backup Data</Text>
+                          </View>       
+                      </View> 
 
       <TouchableOpacity style={styles.button} onPress={pickFile}>
         <Text style={styles.buttonText}>Select JSON File</Text>
@@ -131,7 +136,67 @@ const ImportDataScreen = () => {
 
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#f9f9f9', flexGrow: 1 },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+  heading: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+    color: '#2c3e50',
+  },
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
   button: { backgroundColor: '#007bff', padding: 12, borderRadius: 6, marginBottom: 10 },
   importAllBtn: { backgroundColor: '#28a745', padding: 12, borderRadius: 6, marginTop: 10 },
   buttonText: { color: '#fff', textAlign: 'center', fontWeight: '600' },

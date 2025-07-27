@@ -1,15 +1,19 @@
 // src/screens/ReversibleTransactionsScreen.tsx
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { getAllTransactions, updateTransaction, saveTransaction } from '../services/mockDataService';
 import { Transaction } from '../models/Transaction';
 import { resolveCategoryName, resolvePersonName, resolveSubCategoryName } from '../utils/configUtils';
 import { Ionicons } from '@expo/vector-icons';
 import uuid from 'react-native-uuid';
+import { useAppContext  } from '../context/AppContext';
+
+
 
 const ReversibleTransactionsScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
 
   useEffect(() => {    
     loadData();
@@ -25,6 +29,17 @@ const ReversibleTransactionsScreen = () => {
     await loadData();
   };
 
+    const TableHeader = () => (
+  <View style={[styles.tableRow, styles.tableHeader]}>
+    <Text style={[styles.tableCell, { flex: 1, fontWeight: 'bold' }]}>Person</Text>
+    <Text style={[styles.tableCell, { flex: 1, fontWeight: 'bold' }]}>Category</Text>
+    <Text style={[styles.tableCell, { flex: 1, fontWeight: 'bold' }]}>Subcategory</Text>
+    <Text style={[styles.tableCell, { flex: 1, fontWeight: 'bold' }]}>Amount</Text>
+    <Text style={[styles.tableCell, { flex: 1, fontWeight: 'bold' }]}>Due</Text>
+    <Text style={styles.tableCell}></Text>
+  </View>
+);
+
   const markAsSettled = async (txn: Transaction) => {
     Alert.alert('Mark as Settled', 'Are you sure you want to mark this as settled?', [
       { text: 'Cancel', style: 'cancel' },
@@ -39,22 +54,35 @@ const ReversibleTransactionsScreen = () => {
     ]);
   };
 
-  const renderItem = ({ item }: { item: Transaction }) => (
-    <TouchableOpacity onPress={() => handleSettle(item)} style={styles.card}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={[styles.amount, item.type === 'income' ? styles.income : styles.expense]}>
-          ₹{item.amount}
-        </Text>
-        <Ionicons name="checkmark-done-outline" size={20} color="#1a3c70" />
-      </View>
-      <Text style={styles.label}>Category: {resolveCategoryName(item.categoryId)}</Text>
-      {item.subCategoryId && <Text style={styles.label}>Sub: {resolveSubCategoryName(item.categoryId, item.subCategoryId)}</Text>}
-      <Text style={styles.label}>Person: {resolvePersonName(item.personId)}</Text>
-      {item.fromOrToPersonName && <Text style={styles.label}>From/To: {(item.fromOrToPersonName)}</Text>}
-      <Text style={styles.label}>Due Date: {item.dueDate || 'N/A'}</Text>
-      <Text style={styles.label}>Date: {item.date}</Text>
+
+const renderItem = ({ item }: { item: Transaction }) => {
+  const isIncome = item.type === 'income';
+  const amountColor = isIncome ? '#2ecc71' : '#e74c3c';
+
+  return (
+    <TouchableOpacity
+      onPress={() => handleSettle(item)}
+      style={styles.tableRow}
+    >
+      <Text style={[styles.tableCell, { flex: 1 }]}>
+        {resolvePersonName(item.personId)}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1 }]}>
+        {resolveCategoryName(item.categoryId)}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1 }]}>
+        {item.subCategoryId ? resolveSubCategoryName(item.categoryId, item.subCategoryId) : '—'}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1, color: amountColor }]}>
+        {showSensitiveData ? `₹${item.amount}` : '₹****'}
+      </Text>
+      <Text style={[styles.tableCell, { flex: 1 }]}>
+        {item.dueDate || 'N/A'}
+      </Text>
+      <Ionicons name="chevron-forward-outline" size={18} color="#555" />
     </TouchableOpacity>
   );
+};
 
   const handleSettle = (txn: Transaction) => {
   Alert.alert(
@@ -102,20 +130,17 @@ const ReversibleTransactionsScreen = () => {
 
   return (
     <View style={styles.container}>
-
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}>Actionable Transactions</Text>
-            <TouchableOpacity
-                    onPress={refresh}
-                    style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#007bff',
-                      borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#e6f0ff', }}
-                  >
-                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#007bff', marginRight: 6, }}>
-                      ⟳
-                    </Text>
-                    <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
-            </TouchableOpacity>
-          </View>
+                <View style={styles.header}>
+                         <View style={styles.headerLeft}>
+                            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                            <Text style={styles.title}> Actionable Transactions</Text>
+                          </View>   
+                          <View style={styles.headerRight}>
+                            <TouchableOpacity onPress={refresh} style={styles.iconButton}>
+                              <Ionicons name="refresh" size={22} color="#e6f0ff" />
+                            </TouchableOpacity>
+                          </View>      
+                      </View> 
 
       {transactions.length === 0 ? (
         <Text style={styles.noData}>All dues are settled! 🎉</Text>
@@ -123,6 +148,7 @@ const ReversibleTransactionsScreen = () => {
         <FlatList
           data={transactions}
           keyExtractor={(item) => item.id}
+          ListHeaderComponent={<TableHeader />}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 100 }}
         />
@@ -139,13 +165,69 @@ const styles = StyleSheet.create({
     backgroundColor: '#eef6ff',
     padding: 16,
   },
-  header: {
-    fontSize: 20,
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+  heading: {
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#1a3c70',
     textAlign: 'center',
+    color: '#2c3e50',
   },
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+iconButton: {
+  marginLeft: 12,
+},
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
   card: {
     backgroundColor: '#fff',
     padding: 14,
@@ -155,11 +237,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     elevation: 3,
-  },
-  label: {
-    fontSize: 13,
-    color: '#333',
-    marginTop: 2,
   },
   amount: {
     fontSize: 18,
@@ -176,5 +253,64 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     color: 'grey',
-  },
+  },cardBox: {
+  borderRadius: 10,
+  padding: 12,
+  marginVertical: 8,
+  marginHorizontal: 12,
+  backgroundColor: '#f5f6fa',
+  elevation: 2,
+  shadowColor: '#999',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+},
+
+rowBetween: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 10,
+},
+
+amountText: {
+  fontSize: 18,
+  fontWeight: 'bold',
+},
+
+infoRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginBottom: 6,
+},
+
+infoBox: {
+  flex: 1,
+  marginRight: 10,
+},
+value: {
+  fontSize: 14,
+  fontWeight: '500',
+  color: '#333',
+},
+tableRow: {
+  flexDirection: 'row',
+  paddingVertical: 10,
+  paddingHorizontal: 12,
+  borderBottomWidth: 1,
+  borderColor: '#e0e0e0',
+  alignItems: 'center',
+  backgroundColor: '#fff',
+},
+
+tableHeader: {
+  backgroundColor: '#e6f0ff',
+  borderTopLeftRadius: 6,
+  borderTopRightRadius: 6,
+},
+tableCell: {
+  fontSize: 12,
+  color: '#333',
+  paddingHorizontal: 4,
+}
 });

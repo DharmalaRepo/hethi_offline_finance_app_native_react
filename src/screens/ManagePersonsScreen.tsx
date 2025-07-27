@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, Alert, StyleSheet, Modal } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, Alert, StyleSheet, Modal, Image } from 'react-native';
 import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import uuid from 'react-native-uuid';
@@ -97,9 +97,12 @@ const ManagePersonsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}>Manage Persons</Text>
-            <TouchableOpacity
+                <View style={styles.header}>
+                         <View style={styles.headerLeft}>
+                            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                            <Text style={styles.title}> Manage Persons</Text>
+                          </View>      
+                          <TouchableOpacity
                     onPress={loadPersons}
                     style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#007bff',
                       borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#e6f0ff', }}
@@ -108,8 +111,8 @@ const ManagePersonsScreen = () => {
                       ⟳
                     </Text>
                     <Text style={{ fontSize: 14, color: '#007bff' }}>Reload</Text>
-            </TouchableOpacity>
-          </View>
+            </TouchableOpacity> 
+                      </View> 
 
       <TextInput
         style={styles.search}
@@ -229,6 +232,60 @@ const styles = StyleSheet.create({
       backgroundColor: '#f0f7ff',
       padding: 16,
     },
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+   header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0984e3',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10, // Optional for spacing (or use marginRight)
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  resizeMode: 'contain',
+  marginRight: 8,
+},
+
+title: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
+},
   heading: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
   search: { backgroundColor: '#fff',
                 borderRadius: 8,

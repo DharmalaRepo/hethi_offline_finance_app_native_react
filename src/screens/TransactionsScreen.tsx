@@ -1,8 +1,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Person } from '../models/Person';
-
-
 import {
   View,
   Text,
@@ -25,7 +23,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import TransactionListItem from '../components/TransactionListItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Account } from '../models/Account';
-
+import { useAppContext  } from '../context/AppContext';
 
 
 export default function TransactionsScreen() {
@@ -48,6 +46,7 @@ export default function TransactionsScreen() {
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
 
   useEffect(() => {
     loadTransactions();
@@ -246,14 +245,17 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
     <View style={styles.container}>
       <View style={styles.header}>
          <View style={styles.headerLeft}>
-                        <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-                        <Text style={styles.title}> Transactions</Text>
-                      </View>
-                      <View style={styles.headerRight}>
-                        <TouchableOpacity onPress={loadTransactions} style={styles.iconButton}>
-                          <Ionicons name="refresh" size={22} color="#e6f0ff" />
-                        </TouchableOpacity>
-                      </View>           
+            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+            <Text style={styles.title}> Transactions</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={loadTransactions} style={styles.iconButton}>
+              <Ionicons name="refresh" size={22} color="#e6f0ff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleSensitiveData} style={styles.iconButton}>
+              <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>           
       </View>                 
       
       {/* Search Row */}
@@ -425,13 +427,11 @@ logo: {
   resizeMode: 'contain',
   marginRight: 8,
 },
-
 title: {
   fontSize: 20,
   fontWeight: 'bold',
   color: '#fff',
 },
-
 iconButton: {
   marginLeft: 12,
 },

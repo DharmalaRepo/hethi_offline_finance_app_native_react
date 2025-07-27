@@ -91,7 +91,7 @@ const AddTransactionForm: React.FC<Props> = ({ categories = [],
         note,
         isReversible,
         isSettled: isReturnPayment,
-        fromOrToPersonId: fromOrToPersonId || undefined,
+        fromOrToPersonName: fromOrToPersonId || undefined,
         dueDate: dueDate ? dueDate.toISOString().split('T')[0] : undefined,
         isAutoReverseEntry,
       };
@@ -207,7 +207,7 @@ const AddTransactionForm: React.FC<Props> = ({ categories = [],
         />
 
         <Dropdown
-          data={accounts.map(a => ({ label: a.name, value: a.id }))}
+          data={accounts.map(a => ({ label: a.accountTypeOrName, value: a.id }))}
           labelField="label"
           valueField="value"
           placeholder="Select Account"
