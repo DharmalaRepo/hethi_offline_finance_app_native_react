@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert, Image 
+  Alert, Image
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -16,16 +16,35 @@ import {
   getAllTransactions,
   getAllRecurringPayments,
 } from '../services/mockDataService';
+
 import CryptoJS from 'crypto-js';
 
-const ENCRYPTION_KEY = 'HETHI_DATA_ENCRYPTION_KEY'; // Ideally store this securely or derive from user input
-
+const ENCRYPTION_KEY = 'HETHI_DATA_ENCRYPTION_KEY';
 
 const ExportDataScreen = () => {
   const [exporting, setExporting] = useState(false);
 
+  const encryptData = (data: string): string => {
+    try {
+      const hashedKey = CryptoJS.SHA256(ENCRYPTION_KEY).toString();
+      const encrypted = CryptoJS.AES.encrypt(data, hashedKey).toString();
+      return encrypted;
+    } catch (err) {
+      console.error("Encryption error:", err);
+      throw new Error("Encryption failed");
+    }
+  };
+
+  const decryptData = (encrypted: string, key: string): string => {
+    const hashedKey = CryptoJS.SHA256(key).toString();
+    const bytes = CryptoJS.AES.decrypt(encrypted, hashedKey);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    return decrypted;
+  };
+
   const handleExport = async (type: string) => {
     setExporting(true);
+
     try {
       let data: any;
       switch (type) {
@@ -33,35 +52,41 @@ const ExportDataScreen = () => {
           data = await exportAllData();
           break;
         case 'categories':
-          data = await getCategories();
+          data = { categories: await getCategories() };
           break;
         case 'persons':
-          data = await getAllPersons();
+          data = { persons: await getAllPersons() };
           break;
         case 'transactions':
-          data = await getAllTransactions();
+          data = { transactions: await getAllTransactions() };
           break;
         case 'recurring':
-          data = await getAllRecurringPayments();
+          data = { recurringPayments: await getAllRecurringPayments() };
           break;
         default:
           throw new Error('Invalid export type');
       }
 
-     // Step 1: Stringify the data
+      // Step 1: Stringify the data
       const jsonString = JSON.stringify(data, null, 2);
 
-      // Step 2: Encrypt the string
-      const encryptedData = CryptoJS.AES.encrypt(jsonString, ENCRYPTION_KEY).toString();
+      if (!jsonString) {
+        throw new Error('Encryption failed');
+      }
+
+      console.log('jsonString', jsonString);
 
       // Step 3: Save encrypted data to file
-      const fileUri = `${FileSystem.documentDirectory}${type}_export_encrypted.json`;
-      await FileSystem.writeAsStringAsync(fileUri, encryptedData);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileUri = `${FileSystem.documentDirectory}${type}_export_${timestamp}.json`;
+      console.log('fileUri', fileUri);
+      await FileSystem.writeAsStringAsync(fileUri, jsonString);
 
       await Sharing.shareAsync(fileUri, {
         mimeType: 'application/json',
         dialogTitle: `Export ${type} data`,
       });
+      Alert.alert('Exported', `Your ${type} data was exported successfully.`);
     } catch (err: any) {
       console.error('Export failed', err);
       Alert.alert('Error', 'Failed to export data: ' + err.message);
@@ -72,12 +97,12 @@ const ExportDataScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-              <View style={styles.header}>
-                                       <View style={styles.headerLeft}>
-                                          <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-                                          <Text style={styles.title}> Export Data</Text>
-                                        </View>       
-                                    </View> 
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+          <Text style={styles.title}> Export Data</Text>
+        </View>
+      </View>
       <TouchableOpacity style={styles.button} onPress={() => handleExport('all')} disabled={exporting}>
         <Text style={styles.buttonText}>Export All Data</Text>
       </TouchableOpacity>
@@ -117,23 +142,23 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     color: '#222',
   },
-   header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#0984e3',
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  marginBottom: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 6, // For Android
-  // Optional: Use gradient background with expo-linear-gradient
-},
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
+  },
   heading: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -141,29 +166,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#2c3e50',
   },
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10, // Optional for spacing (or use marginRight)
-},
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10, // Optional for spacing (or use marginRight)
+  },
 
-logo: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-  marginRight: 8,
-},
+  logo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginRight: 8,
+  },
 
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
-},
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
   button: {
     width: '90%',
     backgroundColor: '#007bff',

@@ -1,11 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getToggleKey, saveToggleKey } from '../services/mockDataService';
 
-const TOGGLE_KEY = 'SHOW_SENSITIVE_DATA';
+
 
 const AppContext = createContext({
   showSensitiveData: true,
-  toggleSensitiveData: () => {},
+  toggleSensitiveData: () => { },
 });
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
@@ -13,8 +13,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const loadSetting = async () => {
-      const stored = await AsyncStorage.getItem(TOGGLE_KEY);
-      if (stored !== null) setShowSensitiveData(stored === 'true');
+      const stored = await getToggleKey();  // ✅ Await the promise
+      if (stored !== null) {
+        setShowSensitiveData(stored === 'true');
+      }
     };
     loadSetting();
   }, []);
@@ -22,7 +24,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const toggleSensitiveData = async () => {
     const newValue = !showSensitiveData;
     setShowSensitiveData(newValue);
-    await AsyncStorage.setItem(TOGGLE_KEY, newValue.toString());
+    await saveToggleKey(newValue.toString()); 
   };
 
   return (

@@ -8,14 +8,13 @@ import {
   Alert,
   TextInput, Image
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Category } from '../models/Category';
 import { SubCategory } from '../models/SubCategory';
 import { useFocusEffect } from '@react-navigation/native';
-import { getCategories } from '../services/mockDataService';
-import SubcategoryModal from '../components/SubcategoryModal'; 
-import CategoryModal from '../components/CategoryModal'; 
+import { getCategories, saveCategories, addCategory } from '../services/mockDataService';
+import SubcategoryModal from '../components/SubcategoryModal';
+import CategoryModal from '../components/CategoryModal';
 
 
 const ManageCategoriesScreen = () => {
@@ -40,46 +39,26 @@ const ManageCategoriesScreen = () => {
     applySearchFilterSort();
   }, [searchText, categories, sortAsc]);
 
-  useFocusEffect(
-    useCallback(() => {
-      reloadConfig();
-    }, [])
-  );
-
-const reloadConfig = async () => {
-  const fetchedCategories = await getCategories();
-  const allSubCategories = fetchedCategories.flatMap(cat =>
-    (cat.subcategories || []).map(sub => ({ ...sub, categoryId: cat.id }))
-  );
-
-  setCategories(fetchedCategories);
-  setSubCategories(allSubCategories);
-};
-
   const loadCategories = async () => {
-    const data = await AsyncStorage.getItem('categories');
+    const data = await getCategories();
     if (data) {
-      const parsed = JSON.parse(data);
-      setCategories(parsed);
+      setCategories(data);
     }
   };
 
-  const saveCategories = async (updated: Category[]) => {
-    setCategories(updated);
-    await AsyncStorage.setItem('categories', JSON.stringify(updated));
-  };
-
-  const handleAddCategory = (name: string) => {
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      name,
-      subcategories: [],
-    };
-    const updated = [...categories, newCategory];
-    saveCategories(updated);
+  const handleAddCategory = async (name: string) => {
+    console.log('Inside handleAddCategory');
+    try {
+      const newCategory = await addCategory({ name });
+      console.log('Created Category:', newCategory);
+      loadCategories();
+    } catch (error) {
+      console.error('Error creating category:', error);
+    }
   };
 
   const handleEditCategory = (name: string) => {
+    console.log('Inside handleEditCategory');
     if (!editingCategory) return;
     const updated = categories.map((cat) =>
       cat.id === editingCategory.id ? { ...cat, name } : cat
@@ -107,9 +86,9 @@ const reloadConfig = async () => {
     const updated = categories.map((cat) =>
       cat.id === selectedCategory.id
         ? {
-            ...cat,
-            subcategories: [...(cat.subcategories ?? []), { id: Date.now().toString(), name, categoryId: selectedCategory.id, }]
-          }
+          ...cat,
+          subcategories: [...(cat.subcategories ?? []), { id: Date.now().toString(), name, categoryId: selectedCategory.id, }]
+        }
         : cat
     );
     saveCategories(updated);
@@ -166,17 +145,17 @@ const reloadConfig = async () => {
 
   return (
     <View style={styles.container}>
-                <View style={styles.header}>
-                         <View style={styles.headerLeft}>
-                            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-                            <Text style={styles.title}> Menu Categories</Text>
-                          </View>
-                          <View style={styles.headerRight}>
-                            <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
-                              <Ionicons name="refresh" size={22} color="#e6f0ff" />
-                            </TouchableOpacity>
-                          </View>        
-                      </View> 
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+          <Text style={styles.title}> Menu Categories</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={loadCategories} style={styles.iconButton}>
+            <Ionicons name="refresh" size={22} color="#e6f0ff" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <TextInput
         placeholder="Search categories or subcategories..."
@@ -298,23 +277,23 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     color: '#222',
   },
-   header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#0984e3',
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  marginBottom: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 6, // For Android
-  // Optional: Use gradient background with expo-linear-gradient
-},
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
+  },
   heading: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -322,31 +301,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#2c3e50',
   },
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10, // Optional for spacing (or use marginRight)
-},
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10, // Optional for spacing (or use marginRight)
+  },
 
-logo: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-  marginRight: 8,
-},
-iconButton: {
-  marginLeft: 12,
-},
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
-},
+  logo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginRight: 8,
+  },
+  iconButton: {
+    marginLeft: 12,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
   searchBox: {
     backgroundColor: '#fff',
     borderRadius: 8,

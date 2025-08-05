@@ -27,20 +27,21 @@ const TransactionListItem: React.FC<Props> = ({
     <View style={styles.row}>
       <View
         style={[
-          styles.dot,
+          styles.dot, 
           {
-            backgroundColor: transaction.isSettled
-              ? transaction.isReversible
-                ? '#f44336' // 🔴 Red for unsettled reversible
-                : '#4caf50' // ✅ Green for settled reversible
-              : '#2196f3',   // 🔵 Blue for normal
-          },
+            backgroundColor:
+              transaction.isReversible
+                ? transaction.isSettled
+                  ? '#4caf50' // ✅ Green → Reversible & Settled
+                  : '#f44336' // 🔴 Red → Reversible & Not Settled
+                : 'white',   // 🔵 Blue → Not Reversible
+          }, 
         ]}
       />
       <Text style={styles.cell}>{transaction.date}</Text>
       <Text style={styles.cell}>{categoryName}</Text>
       <Text style={styles.cell}>{subCategoryName || ''}</Text>
-      <Text style={[styles.cell, styles.amount, { color: amountColor }]}>
+      <Text style={[styles.cell, styles.amount, { color: amountColor }, transaction.isOptional && { textDecorationLine: 'underline', textDecorationColor: 'orange' },]}>
         {showSensitiveData ? `₹ ${transaction.amount}` : '₹ ****'}
       </Text>
       <TouchableOpacity onPress={() => onEdit(transaction)} style={styles.iconBtn}>
@@ -70,7 +71,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     color: '#333',
     textAlign: 'center',
   },

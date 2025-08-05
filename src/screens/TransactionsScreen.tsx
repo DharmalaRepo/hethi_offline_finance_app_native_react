@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  Alert, Image
+  Alert, Image, Modal, Pressable
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getAllTransactions, deleteTransaction, updateTransaction, getAllPersons } from '../services/mockDataService';
@@ -24,6 +24,9 @@ import TransactionListItem from '../components/TransactionListItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Account } from '../models/Account';
 import { useAppContext  } from '../context/AppContext';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { RootStackParamList } from '../navigation/routes'; // adjust as needed
+
 
 
 export default function TransactionsScreen() {
@@ -38,6 +41,7 @@ export default function TransactionsScreen() {
     startDate: null,
     endDate: null,
   });
+  const [modalVisible, setModalVisible] = useState(false);
   const [categoriesMap, setCategoriesMap] = useState<Record<string, string>>({});
   const [subCategoriesMap, setSubCategoriesMap] = useState<Record<string, string>>({});
   const [sortColumn, setSortColumn] = useState<string>('date');
@@ -48,16 +52,22 @@ export default function TransactionsScreen() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
 
+  type TransactionsScreenRouteProp = RouteProp<RootStackParamList, 'Transactions'>;
+  const route = useRoute<TransactionsScreenRouteProp>();
+  const filters = route.params?.filters;
+
   useEffect(() => {
     loadTransactions();
     loadCategoryMaps();
   }, []);
 
-  useFocusEffect(
-     useCallback(() => {
-       reloadData();
-     }, [])
-   );
+ useFocusEffect(
+  useCallback(() => {
+    if (!filters) {
+      reloadData(); // only reload if not navigating with filters
+    }
+  }, [filters])
+);
 
   useEffect(() => {    
     loadPersons();
@@ -78,6 +88,37 @@ export default function TransactionsScreen() {
   };
   loadCategories();
 }, []);
+
+useEffect(() => {
+  if (!filters) return; // wait until filters are passed
+
+  console.log('inside useEffect with filters', filters);
+  
+
+  const loadData = async () => {
+    const allTxns = await getAllTransactions();
+
+    const filtered = allTxns.filter(txn => {
+  const matchesType = !filters?.type || txn.type === filters.type;
+  const txnDate = new Date(txn.date);
+  const matchesMonth = !filters?.month || txnDate.getMonth() + 1 === filters.month;
+  const matchesYear = !filters?.year || txnDate.getFullYear() === filters.year;
+
+  const isMatch = matchesType && matchesMonth && matchesYear;
+
+  if (isMatch) {
+    console.log('✅ Filter Match:', txn.type, txn.date, txn.amount);
+  }
+
+  return isMatch;
+});
+
+    setTransactions(filtered);
+    setFiltered(filtered);
+  };
+
+  loadData();
+}, [filters]);
 
  const reloadData = async () => {
       setCategories(await getCategories());
@@ -103,7 +144,7 @@ export default function TransactionsScreen() {
   }, {} as Record<string, string>);
 
     const accountsMap: Record<string, string> = accounts.reduce((acc, account) => {
-      acc[account.id] = account.accountTypeOrName;
+      acc[account.id] = account.paymentMode;
       return acc;
     }, {} as Record<string, string>);
 
@@ -141,9 +182,9 @@ export default function TransactionsScreen() {
   };
   
   const getCategoryName = (categoryId: string): string => {
-  const category = categories.find((c) => c.id === categoryId);
-  return category?.name || '';
-};
+    const category = categories.find((c) => c.id === categoryId);
+    return category?.name || '';
+  };
 
 const getSubCategoryName = (categoryId: string, subCategoryId?: string): string => {
   const category = categories.find((c) => c.id === categoryId);
@@ -152,7 +193,6 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
 };
   const filterTransactions = (query: string, start: Date | null, end: Date | null) => {
     let results = [...transactions];
-
     if (query) {
       const q = query.toLowerCase();
       results = results.filter((txn) => {
@@ -241,11 +281,19 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
     await loadTransactions();
   };
 
+  const now = new Date();
+  const currentMonthLabel = now.toLocaleString('default', { month: 'short' });
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthLabel = lastMonthDate.toLocaleString('default', { month: 'short' });
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
          <View style={styles.headerLeft}>
-            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+            <TouchableOpacity onPress={() => setModalVisible(true)}>
+                <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+            </TouchableOpacity>
+
             <Text style={styles.title}> Transactions</Text>
           </View>
           <View style={styles.headerRight}>
@@ -256,7 +304,14 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={22} color="#fff" />
             </TouchableOpacity>
           </View>           
-      </View>                 
+      </View>
+      <Modal visible={modalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalContainer}>
+          <Pressable onPress={() => setModalVisible(false)} style={styles.modalBackground}>
+            <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
+          </Pressable>
+        </View>
+      </Modal>
       
       {/* Search Row */}
       <View style={styles.searchRow}>
@@ -269,23 +324,87 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
             filterTransactions(text, dateRange.startDate, dateRange.endDate);
           }}
         />
+        {/* Current Month */}
+                <TouchableOpacity
+                  style={styles.filterOption}
+                  onPress={() => {
+                    const now = new Date();
+                    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    setDateRange({ startDate: start, endDate: end });
+                    filterTransactions(searchQuery, start, end);
+                  }}
+                >
+                  <Ionicons name="calendar" size={18} color="#0984e3" />
+                  <Text style={styles.filterText}>{currentMonthLabel}</Text>
+                </TouchableOpacity>
+
+                {/* Last Month */}
+                <TouchableOpacity
+                  style={styles.filterOption}
+                  onPress={() => {
+                    const now = new Date();
+                    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+                    setDateRange({ startDate: start, endDate: end });
+                    filterTransactions(searchQuery, start, end);
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={18} color="#6c5ce7" />
+                  <Text style={styles.filterText}>{lastMonthLabel}</Text>
+                </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsExportModalVisible(true)} style={styles.iconBtn}>
           <Icon name="share-outline" size={24} color="#007bff" />
         </TouchableOpacity>
       </View>
 
-      {/* Date Filters */}
-      <View style={styles.dateRow}>
-        <TouchableOpacity onPress={() => setShowStartPicker(true)} style={styles.dateBtn}>
-          <Text style={styles.dateText}>{dateRange.startDate?.toDateString() || 'Start Date'}</Text>
+      <View style={[styles.dateRow, { flexWrap: 'wrap', rowGap: 6 }]}>
+
+
+        {/* Start Date */}
+        <TouchableOpacity
+          style={styles.filterOption}
+          onPress={() => setShowStartPicker(true)}
+        >
+          <Ionicons name="calendar-number" size={18} color="#00b894" />
+          <Text style={styles.filterText}>
+            {dateRange.startDate
+              ? `${dateRange.startDate.getDate().toString().padStart(2, '0')}-${(dateRange.startDate.getMonth() + 1).toString().padStart(2, '0')}-${dateRange.startDate.getFullYear()}`
+              : 'From'}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowEndPicker(true)} style={styles.dateBtn}>
-          <Text style={styles.dateText}>{dateRange.endDate?.toDateString() || 'End Date'}</Text>
+
+        {/* End Date */}
+        <TouchableOpacity
+          style={styles.filterOption}
+          onPress={() => setShowEndPicker(true)}
+        >
+          <Ionicons name="calendar-number-outline" size={18} color="#fd79a8" />
+          <Text style={styles.filterText}>
+            {dateRange.endDate
+              ? `${dateRange.endDate.getDate().toString().padStart(2, '0')}-${(dateRange.endDate.getMonth() + 1).toString().padStart(2, '0')}-${dateRange.endDate.getFullYear()}`
+              : 'To'}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.applyBtn} onPress={() => filterTransactions(searchQuery, dateRange.startDate, dateRange.endDate)}>
+
+        {/* Apply */}
+        <TouchableOpacity
+          style={styles.filterIconBtn}
+          onPress={() =>
+            filterTransactions(searchQuery, dateRange.startDate, dateRange.endDate)
+          }
+        >
           <Ionicons name="checkmark-circle" size={22} color="green" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => setDateRange({ startDate: null, endDate: null })}>
+
+        {/* Clear */}
+        <TouchableOpacity
+          style={styles.filterIconBtn}
+          onPress={() => {
+            setDateRange({ startDate: null, endDate: null });
+            filterTransactions(searchQuery, null, null); // fallback
+          }}
+        >
           <Ionicons name="close-circle" size={22} color="red" />
         </TouchableOpacity>
       </View>
@@ -566,4 +685,53 @@ iconButton: {
     borderRadius: 5,
     marginRight: 8,
   },
+  modalContainer: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.9)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalBackground: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    fullImage: {
+      width: '90%',
+      height: '90%',
+    },
+    quickFilterBtn: {
+      backgroundColor: '#dfe6e9',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      marginHorizontal: 4,
+    },
+    quickFilterText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#2d3436',
+    },
+    filterOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f1f2f6',
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      borderRadius: 8,
+      marginRight: 6,
+    },
+    filterText: {
+      marginLeft: 4,
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#2d3436',
+    },
+    filterIconBtn: {
+      backgroundColor: '#f1f2f6',
+      padding: 6,
+      borderRadius: 8,
+      marginRight: 6,
+    },
 });

@@ -20,4 +20,5 @@ export interface Transaction {
   createdAt: string;
   updatedAt?: string;
   isTestData?: boolean;
+  isOptional?: boolean;
 }

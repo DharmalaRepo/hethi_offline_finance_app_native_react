@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppSettings } from '../models/AppSettings';
-import { getAppSettings, saveAppSettings } from '../services/settingsService';
+import { getAppSettings, saveAppSettings } from '../services/mockDataService';
 import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationLightTheme } from '@react-navigation/native';
 
 type ThemeContextType = {

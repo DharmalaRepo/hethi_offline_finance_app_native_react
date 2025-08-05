@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 console.log('EncryptedStorage test:', EncryptedStorage);
 
+/*
 export const getSecureItem = async (key: string): Promise<string | null> => {
   try {
     return await EncryptedStorage.getItem(key);
@@ -20,6 +21,7 @@ export const setSecureItem = async (key: string, value: string) => {
     console.error('Error setting secure item', error);
   }
 };
+*/
 
 
 export const saveSecureItemInJson = async (key: string, value: any): Promise<void> => {

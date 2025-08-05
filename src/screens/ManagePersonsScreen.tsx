@@ -3,9 +3,8 @@ import { View, Text, FlatList, TextInput, TouchableOpacity, Alert, StyleSheet, M
 import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import uuid from 'react-native-uuid';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { getPersons } from '../services/mockDataService';
+import { getPersons, savePersons, addAccountToPerson} from '../services/mockDataService';
 
 const ManagePersonsScreen = () => {
   const [persons, setPersons] = useState<Person[]>([]);
@@ -14,7 +13,7 @@ const ManagePersonsScreen = () => {
   const [isPersonModalVisible, setIsPersonModalVisible] = useState(false);
   const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
   const [personName, setPersonName] = useState('');
-  const [accountName, setAccountName] = useState('');
+  const [paymentMode, setPaymentMode] = useState('');
   const [accountNotes, setAccountNotes] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -23,77 +22,111 @@ const ManagePersonsScreen = () => {
   }, []);
 
 
-  const loadPersons = async () => {
-      //console.log('Inside loadPersons');
-    const json = await getPersons();
-    if (json) setPersons(json);
-  };
+    const loadPersons = async () => {
+      const data = await getPersons();
+      const valid = (data || []).filter(
+        p => p && typeof p.name === 'string' && p.name.trim() !== ''
+      );
+      setPersons(valid);
+    };
 
+      const addOrUpdatePerson = async () => {
+        const trimmedName = personName.trim();
+        if (!trimmedName) return;
 
-  const savePersons = async (data: Person[]) => {
-    setPersons(data);
-    await AsyncStorage.setItem('persons', JSON.stringify(data));
-  };
+        const nameKey = trimmedName.toLowerCase();
 
-  const addOrUpdatePerson = () => {
-    const trimmedName = personName.trim();
-    if (!trimmedName) return;
-    const existing = persons.find(p => p.name.toLowerCase() === trimmedName.toLowerCase());
-    let updated;
-    if (selectedPerson) {
-      updated = persons.map(p => p.id === selectedPerson.id ? { ...p, name: trimmedName } : p);
-    } else if (!existing) {
-      updated = [...persons, { id: uuid.v4().toString(), name: trimmedName, accounts: [] }];
-    } else {
-      Alert.alert('Duplicate', 'Person already exists');
-      return;
-    }
-    savePersons(updated);
-    setPersonName('');
-    setSelectedPerson(null);
-    setIsPersonModalVisible(false);
-  };
+        // Duplicate name check
+        const isNameDuplicate = persons.some(p =>
+          p.name.toLowerCase() === nameKey &&
+          (!selectedPerson || p.id !== selectedPerson.id)
+        );
+
+        if (isNameDuplicate) {
+          Alert.alert('Duplicate', 'Person with the same name already exists.');
+          return;
+        }
+
+        let updatedPersons: Person[] = [];
+
+        if (selectedPerson) {
+          // Edit mode
+          updatedPersons = persons.map(p =>
+            p.id === selectedPerson.id ? { ...p, name: trimmedName } : p
+          );
+        } else {
+          // Add new person with unique ID
+          const newPerson: Person = {
+            id: uuid.v4().toString(),
+            name: trimmedName,
+            accounts: [],
+          };
+          updatedPersons = [...persons, newPerson];
+        }
+
+        try {
+          await savePersons(updatedPersons); // ✅ full list always
+          setPersons(updatedPersons);
+          setPersonName('');
+          setSelectedPerson(null);
+          setIsPersonModalVisible(false);
+        } catch (error) {
+          Alert.alert('Error', 'Failed to save person. Please try again.');
+        }
+      };
 
   const deletePerson = (id: string) => {
     Alert.alert('Confirm', 'Delete this person?', [
-      {
-          text: 'Cancel',
-          style: 'cancel', // ✅ renders cancel-style button
-          onPress: () => console.log('Cancel pressed')
-        },
+      { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
-          style: 'destructive',onPress: () => {
-          const updated = persons.filter(p => p.id !== id);
-          savePersons(updated);
-        }
-      }
+        style: 'destructive',
+        onPress: async () => {
+          const updatedList = persons.filter(p => p.id !== id);
+          await savePersons(updatedList);
+          setPersons(updatedList);
+        },
+      },
     ]);
   };
 
+    const setPaymentModeToPerson = async () => {
+      if (!selectedPerson || !paymentMode.trim()) return;
 
+      const trimmedPaymentMode = paymentMode.trim();
+      const trimmedNotes = accountNotes.trim();
 
-  const addAccountToPerson = () => {
-    if (!selectedPerson || !accountName.trim()) return;
-    const updatedPersons = persons.map(p => {
-      if (p.id === selectedPerson.id) {
-        const newAccount: Account = {
-          id: uuid.v4().toString(),
-          personId: p.id,
-          accountTypeOrName: accountName.trim(),
-          notes: accountNotes.trim(),
-        };
-        return { ...p, accounts: [...(p.accounts || []), newAccount] };
+      try {
+        const newAccount: Account = await addAccountToPerson(selectedPerson.id, {
+          paymentMode: trimmedPaymentMode,
+          notes: trimmedNotes,
+        });
+
+        // Update local state
+        const updatedPersons = persons.map(p => {
+          if (p.id === selectedPerson.id) {
+            return {
+              ...p,
+              accounts: [...(p.accounts || []), newAccount],
+            };
+          }
+          return p;
+        });
+
+        setPersons(updatedPersons);
+        setPaymentMode('');
+        setAccountNotes('');
+        setSelectedPerson(null);
+        setIsAccountModalVisible(false);
+        await loadPersons();
+      } catch (error) {
+        Alert.alert('Error', 'Could not add account. Please try again.');
       }
-      return p;
-    });
-    savePersons(updatedPersons);
-    setAccountName('');
-    setAccountNotes('');
-    setIsAccountModalVisible(false);
-  };
+    };
 
-  const filteredPersons = persons.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredPersons = persons.filter(p => 
+    typeof p.name === 'string' && p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <View style={styles.container}>
@@ -154,7 +187,7 @@ const ManagePersonsScreen = () => {
                                             <View style={styles.subcategoryList}>
                                               {(item.accounts || []).map((sub) => (
                                                 <Text key={sub.id} style={styles.subText}>
-                                                  • {sub.accountTypeOrName}
+                                                  • {sub.paymentMode}
                                                 </Text>
                                               ))}
                                             </View>
@@ -175,9 +208,6 @@ const ManagePersonsScreen = () => {
               style={styles.input}
             />
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.saveButton} onPress={addOrUpdatePerson}>
-                <Text style={styles.saveText}>Save</Text>
-              </TouchableOpacity>
 
               <TouchableOpacity style={styles.cancelButton} onPress={() => {
                 setIsPersonModalVisible(false);
@@ -185,6 +215,10 @@ const ManagePersonsScreen = () => {
                 setSelectedPerson(null);
               }}>
                 <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.saveButton} onPress={addOrUpdatePerson}>
+                 <Text style={styles.saveText}>Add Person</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -195,27 +229,22 @@ const ManagePersonsScreen = () => {
       <Modal visible={isAccountModalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Account for {selectedPerson?.name}</Text>
+            <Text style={styles.modalTitle}>Add PaymentMode for {selectedPerson?.name}</Text>
             <TextInput
-              placeholder="Account name"
-              value={accountName}
-              onChangeText={setAccountName}
-              style={styles.input}
-            />
-            <TextInput
-              placeholder="Notes (optional)"
-              value={accountNotes}
-              onChangeText={setAccountNotes}
+              placeholder="PaymentMode"
+              value={paymentMode}
+              onChangeText={setPaymentMode}
               style={styles.input}
             />
 
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.saveButton} onPress={addAccountToPerson}>
-                <Text style={styles.saveText}>Add Account</Text>
-              </TouchableOpacity>
 
               <TouchableOpacity style={styles.cancelButton} onPress={() => setIsAccountModalVisible(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.saveButton} onPress={setPaymentModeToPerson}>
+                              <Text style={styles.saveText}>Add PaymentMode</Text>
               </TouchableOpacity>
             </View>
 

@@ -11,11 +11,12 @@ import ExportDataScreen from '../screens/ExportDataScreen';
 import SetPinScreen from '../screens/SetPinScreen';
 import SetupWizardScreen from '../screens/SetupWizardScreen';
 import DataManagementScreen from '../screens/DataManagementScreen';
+import OptionalExpensesScreen from '../screens/OptionalExpensesScreen';
 import LockScreen from '../screens/LockScreen';
 
 
 export type MoreStackParamList = {
-  MoreNavigator: undefined;
+  MoreMenu: undefined;
   Categories: undefined;
   Persons: undefined;
   MonthlyOpeningBalance: undefined;
@@ -26,15 +27,15 @@ export type MoreStackParamList = {
   SetPin: undefined;
   SetupWizard: undefined;
   DataManagement: undefined;
-  More: undefined; // Add this for the menu screen
+  OptionalExpenses: undefined;
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
 
-const MoreNavigator = () => {
+const More = () => {
   return (
-    <Stack.Navigator initialRouteName="More">
-      <Stack.Screen name="More" component={MoreMenuScreen} options={{ title: 'Menu Items', headerShown: false }} />
+    <Stack.Navigator initialRouteName="MoreMenu">
+      <Stack.Screen name="MoreMenu" component={MoreMenuScreen} options={{ title: 'Menu Items', headerShown: false }} />
       <Stack.Screen name="Categories" component={ManageCategoriesScreen} options={{ title: 'Manage Categories', headerShown: false }} />
       <Stack.Screen name="Persons" component={ManagePersonsScreen} options={{ title: 'Manage Persons', headerShown: false }} />
       <Stack.Screen name="ReversibleTransactions" component={ReversibleTransactionsScreen} options={{ title: 'Reversible Transactions', headerShown: false }} />
@@ -42,10 +43,11 @@ const MoreNavigator = () => {
       <Stack.Screen name="DataManagement" component={DataManagementScreen} options={{ title: 'Data Management', headerShown: false }} />
       <Stack.Screen name="ImportData" component={ImportDataScreen} options={{ title: 'Import Data', headerShown: false }} />
       <Stack.Screen name="ExportData" component={ExportDataScreen} options={{ title: 'Export Data', headerShown: false }} />
-      <Stack.Screen name="SetPin" component={SetPinScreen} options={{ title: '🔐 PIN Protection', headerShown: false }} />
+      <Stack.Screen name="SetPin" component={SetPinScreen} options={{ title: 'PIN Protection', headerShown: false }} />
       <Stack.Screen name="SetupWizard" component={SetupWizardScreen} options={{ title: 'Set up Wizard', headerShown: false }} />      
+      <Stack.Screen name="OptionalExpenses" component={OptionalExpensesScreen} options={{ title: 'Optional Expenses', headerShown: false }} />      
     </Stack.Navigator>
   );
 };
 
-export default MoreNavigator;
+export default More;

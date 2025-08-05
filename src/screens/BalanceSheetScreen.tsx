@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CheckBox from '@react-native-community/checkbox';
 import { Picker } from '@react-native-picker/picker';
@@ -12,19 +12,21 @@ import { Account } from '../models/Account';
 import { Transaction } from '../models/Transaction';
 import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
-import {calculateSummary,  getUniqueYearsMonths,  getFilteredBalances,  
-  getFilteredTransactions, generatePersonAccountSummary} from '../utils/balanceSheetUtils';
+import {
+  calculateSummary, getUniqueYearsMonths, getFilteredBalances,
+  getFilteredTransactions, generatePersonAccountSummary
+} from '../utils/balanceSheetUtils';
 import { Alert } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import MonthPicker from 'react-native-month-year-picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { Modal } from 'react-native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 const BalanceSheetScreen = () => {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear().toString());
   const [month, setMonth] = useState((today.getMonth() + 1).toString().padStart(2, '0'));
-
+  const [modalVisible1, setModalVisible1] = useState(false);
   const [persons, setPersons] = useState<Person[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -33,13 +35,13 @@ const BalanceSheetScreen = () => {
 
   const [selectedPersonId, setSelectedPersonId] = useState<string>('');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
-
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'opening' | 'closing'>('opening');
   const [showOpening, setShowOpening] = useState<boolean>(true);
   const [showClosing, setShowClosing] = useState<boolean>(true);
   const getPersonName = (id: string) => persons.find(p => p.id === id)?.name || 'Unknown';
-  const getAccountName = (id: string) => accounts.find(a => a.id === id)?.accountTypeOrName || 'Unknown';
+  const getAccountName = (id: string) => accounts.find(a => a.id === id)?.paymentMode || 'Unknown';
   const [expandedIndexes, setExpandedIndexes] = useState<number[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
@@ -84,12 +86,12 @@ const BalanceSheetScreen = () => {
 
     if (!account) return 'Unknown';
 
-    const accountLabel = account.accountTypeOrName || 'Unnamed Account';
+    const accountLabel = account.paymentMode || 'Unnamed Account';
     const personLabel = person ? person.name : 'Unknown Person';
 
     return `${accountLabel} (${personLabel})`;
   };
-  
+
   const getBalance = (
     balances: (MonthlyOpeningBalance | MonthlyClosingBalance)[],
     year: string,
@@ -131,9 +133,9 @@ const BalanceSheetScreen = () => {
   }, []);
 
   const reloadData = () => {
-      loadData();
-      console.log("Reloading Monthly DashBoard sheets...");
-      };
+    loadData();
+    console.log("Reloading Monthly DashBoard sheets...");
+  };
 
   useEffect(() => {
     if (selectedPersonId) {
@@ -173,29 +175,51 @@ const BalanceSheetScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-                  <View style={styles.headerLeft}>
-                    <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-                    <Text style={styles.title}>Balance Sheet Dashboard</Text>
-                  </View>
-      
-                  <View style={styles.headerRight}>
-                    <TouchableOpacity onPress={reloadData} style={styles.iconButton}>
-                      <Ionicons name="refresh" size={22} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => setModalVisible1(true)}>
+            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+          </TouchableOpacity>
+
+          <Text style={styles.title}>Balance Sheet Dashboard</Text>
+        </View>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={reloadData} style={styles.iconButton}>
+            <Ionicons name="refresh" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+      <Modal visible={modalVisible1} transparent={true} animationType="fade">
+        <View style={styles.modalContainer}>
+          <Pressable onPress={() => setModalVisible1(false)} style={styles.modalBackground}>
+            <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
+          </Pressable>
+        </View>
+      </Modal>
 
       {/* Header Section Data, Persons and accounts */}
       <View style={styles.filterRow}>
-        {/* Month/Year Button */}
-        <TouchableOpacity style={styles.periodButton} onPress={() => setShowPicker(true)}>
-          <Ionicons name="calendar" size={18} color="#1a3c70" style={{ marginRight: 6 }} />
-          <Text style={styles.periodText}>{month}/{year}</Text>
-        </TouchableOpacity>
-
+        {/* Month/Year Picker */}
+        <View style={{ flex: 1, marginRight: 6 }}>
+          <Text style={styles.label}>Year - Month</Text>
+          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateBtn}>
+            <Text>{month || 'Select Month'}</Text>
+          </TouchableOpacity>
+          <DateTimePickerModal
+            isVisible={showDatePicker}
+            mode="date"
+            onConfirm={(date: Date) => {
+              setShowDatePicker(false);
+              setSelectedDate(date);
+              const selectedMonth = `${date.getFullYear()} - ${String(date.getMonth() + 1).padStart(2, '0')}`;
+              setMonth(selectedMonth);
+            }}
+            onCancel={() => setShowDatePicker(false)}
+          />
+        </View>
 
         {/* Person Picker */}
-        <View style={styles.dropdownWrapper}>
+        <View style={[styles.dropdownWrapper, { flex: 1, marginHorizontal: 6 }]}>
           <Ionicons name="person" size={18} color="#1a3c70" style={{ marginRight: 4 }} />
           <Picker
             selectedValue={selectedPersonId}
@@ -209,7 +233,7 @@ const BalanceSheetScreen = () => {
         </View>
 
         {/* Account Picker */}
-        <View style={styles.dropdownWrapper}>
+        <View style={[styles.dropdownWrapper, { flex: 1, marginLeft: 6 }]}>
           <Ionicons name="wallet" size={18} color="#1a3c70" style={{ marginRight: 4 }} />
           <Picker
             selectedValue={selectedAccountId}
@@ -217,161 +241,161 @@ const BalanceSheetScreen = () => {
             onValueChange={value => setSelectedAccountId(value)}>
             <Picker.Item label="All" value="" />
             {accounts.map(a => (
-              <Picker.Item key={a.id} label={a.accountTypeOrName} value={a.id} />
+              <Picker.Item key={a.id} label={a.paymentMode} value={a.id} />
             ))}
           </Picker>
         </View>
       </View>
 
       {/* Opening Balance Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text> Opening Balance  </Text>
-            <Text style={styles.balanceAmount}>
-              ₹{' '}
-              {getBalance(  
-                openingBalances,
-                year,
-                month,
-                selectedPersonId,
-                selectedAccountId
-              ).toFixed(2)}
-            </Text>
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <Text> Opening Balance  </Text>
+          <Text style={styles.balanceAmount}>
+            ₹{' '}
+            {getBalance(
+              openingBalances,
+              year,
+              month,
+              selectedPersonId,
+              selectedAccountId
+            ).toFixed(2)}
+          </Text>
 
-            <TouchableOpacity onPress={() => setShowOpening(!showOpening)}>
-              <Text style={styles.toggleText}>{showOpening ? 'Hide' : 'Show'}</Text>
-            </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowOpening(!showOpening)}>
+            <Text style={styles.toggleText}>{showOpening ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={styles.headerButton} onPress={() => {
-              setModalType('opening');
-              setModalVisible(true);
-            }}>
-              <Text style={styles.headerButtonText}>+ Add</Text>
-            </TouchableOpacity>
-          </View>
-
-           {showOpening && (
-            <View style={{ marginTop: 16 }}>
-                      {openingSummaryData.map((personSummary: any, index: number) => (
-                        <View key={personSummary.personId} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
-                          {/* Person Summary Header */}
-                          <TouchableOpacity
-                            onPress={() => toggleExpand(index)}
-                            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#e8f1ff' }}
-                          >
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              {multiSelectEnabled && (
-                                <CheckBox
-                                  value={selectedItems.includes(personSummary.personId)}
-                                  onValueChange={() => toggleCheckbox(personSummary.personId)}
-                                />
-                              )}
-                              <Text style={{ fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
-                                {resolvePersonName(personSummary.personId)}
-                              </Text>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text style={{ fontWeight: 'bold', marginRight: 12 }}>
-                                ₹{personSummary.totalAmount.toFixed(2)}
-                              </Text>
-                              <Text>{expandedIndexes.includes(index) ? '▲' : '▼'}</Text>
-                            </View>
-                          </TouchableOpacity>
-
-                          {/* Collapsible Content */}
-                          {expandedIndexes.includes(index) && (
-                            <View style={{ padding: 10, paddingTop: 0 }}>
-                              {personSummary.accounts.map((acc: { accountId: string; amount: number }) => (
-                                <View key={acc.accountId} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6, padding: 10, backgroundColor: '#f6f9ff', borderRadius: 4 }}>
-                                  <View>
-                                    <Text style={{ fontSize: 14 }}>{resolveAccountName(acc.accountId)}</Text>
-                                    <Text style={{ fontSize: 13, color: '#444' }}>₹{acc.amount.toFixed(2)}</Text>
-                                  </View>
-                                </View>
-                              ))}
-                            </View>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-          )}
+          <TouchableOpacity style={styles.headerButton} onPress={() => {
+            setModalType('opening');
+            setModalVisible(true);
+          }}>
+            <Text style={styles.headerButtonText}>+ Add</Text>
+          </TouchableOpacity>
         </View>
+
+        {showOpening && (
+          <View style={{ marginTop: 16 }}>
+            {openingSummaryData.map((personSummary: any, index: number) => (
+              <View key={personSummary.personId} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
+                {/* Person Summary Header */}
+                <TouchableOpacity
+                  onPress={() => toggleExpand(index)}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#e8f1ff' }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {multiSelectEnabled && (
+                      <CheckBox
+                        value={selectedItems.includes(personSummary.personId)}
+                        onValueChange={() => toggleCheckbox(personSummary.personId)}
+                      />
+                    )}
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
+                      {resolvePersonName(personSummary.personId)}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontWeight: 'bold', marginRight: 12 }}>
+                      ₹{personSummary.totalAmount.toFixed(2)}
+                    </Text>
+                    <Text>{expandedIndexes.includes(index) ? '▲' : '▼'}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Collapsible Content */}
+                {expandedIndexes.includes(index) && (
+                  <View style={{ padding: 10, paddingTop: 0 }}>
+                    {personSummary.accounts.map((acc: { accountId: string; amount: number }) => (
+                      <View key={acc.accountId} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6, padding: 10, backgroundColor: '#f6f9ff', borderRadius: 4 }}>
+                        <View>
+                          <Text style={{ fontSize: 14 }}>{resolveAccountName(acc.accountId)}</Text>
+                          <Text style={{ fontSize: 13, color: '#444' }}>₹{acc.amount.toFixed(2)}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* Closing Balance Section */}
       <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text> Closing Balance  </Text>
-            <Text style={styles.balanceAmount}>
-              ₹{' '}
-              {getBalance(  
-                closingBalances,
-                year,
-                month,
-                selectedPersonId,
-                selectedAccountId
-              ).toFixed(2)}
-            </Text>
+        <View style={styles.sectionHeader}>
+          <Text> Closing Balance  </Text>
+          <Text style={styles.balanceAmount}>
+            ₹{' '}
+            {getBalance(
+              closingBalances,
+              year,
+              month,
+              selectedPersonId,
+              selectedAccountId
+            ).toFixed(2)}
+          </Text>
 
-            <TouchableOpacity onPress={() => setShowClosing(!showClosing)}>
-              <Text style={styles.toggleText}>{showClosing ? 'Hide' : 'Show'}</Text>
-            </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowClosing(!showClosing)}>
+            <Text style={styles.toggleText}>{showClosing ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={styles.headerButton} onPress={() => {
-              setModalType('closing');
-              setModalVisible(true);
-            }}>
-              <Text style={styles.headerButtonText}>+ Add</Text>
-            </TouchableOpacity>
-          </View>
-
-           {showClosing && (
-            <View style={{ marginTop: 16 }}>
-                      {closingSummaryData.map((personSummary: any, index: number) => (
-                        <View key={personSummary.personId} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
-                          {/* Person Summary Header */}
-                          <TouchableOpacity
-                            onPress={() => toggleExpand(index)}
-                            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#e8f1ff' }}
-                          >
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              {multiSelectEnabled && (
-                                <CheckBox
-                                  value={selectedItems.includes(personSummary.personId)}
-                                  onValueChange={() => toggleCheckbox(personSummary.personId)}
-                                />
-                              )}
-                              <Text style={{ fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
-                                {resolvePersonName(personSummary.personId)}
-                              </Text>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text style={{ fontWeight: 'bold', marginRight: 12 }}>
-                                ₹{personSummary.totalAmount.toFixed(2)}
-                              </Text>
-                              <Text>{expandedIndexes.includes(index) ? '▲' : '▼'}</Text>
-                            </View>
-                          </TouchableOpacity>
-
-                          {/* Collapsible Content */}
-                          {expandedIndexes.includes(index) && (
-                            <View style={{ padding: 10, paddingTop: 0 }}>
-                              {personSummary.accounts.map((acc: { accountId: string; amount: number }) => (
-                                <View key={acc.accountId} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6, padding: 10, backgroundColor: '#f6f9ff', borderRadius: 4 }}>
-                                  <View>
-                                    <Text style={{ fontSize: 14 }}>{resolveAccountName(acc.accountId)}</Text>
-                                    <Text style={{ fontSize: 13, color: '#444' }}>₹{acc.amount.toFixed(2)}</Text>
-                                  </View>
-                                </View>
-                              ))}
-                            </View>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-          )}
+          <TouchableOpacity style={styles.headerButton} onPress={() => {
+            setModalType('closing');
+            setModalVisible(true);
+          }}>
+            <Text style={styles.headerButtonText}>+ Add</Text>
+          </TouchableOpacity>
         </View>
+
+        {showClosing && (
+          <View style={{ marginTop: 16 }}>
+            {closingSummaryData.map((personSummary: any, index: number) => (
+              <View key={personSummary.personId} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
+                {/* Person Summary Header */}
+                <TouchableOpacity
+                  onPress={() => toggleExpand(index)}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#e8f1ff' }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {multiSelectEnabled && (
+                      <CheckBox
+                        value={selectedItems.includes(personSummary.personId)}
+                        onValueChange={() => toggleCheckbox(personSummary.personId)}
+                      />
+                    )}
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
+                      {resolvePersonName(personSummary.personId)}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontWeight: 'bold', marginRight: 12 }}>
+                      ₹{personSummary.totalAmount.toFixed(2)}
+                    </Text>
+                    <Text>{expandedIndexes.includes(index) ? '▲' : '▼'}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Collapsible Content */}
+                {expandedIndexes.includes(index) && (
+                  <View style={{ padding: 10, paddingTop: 0 }}>
+                    {personSummary.accounts.map((acc: { accountId: string; amount: number }) => (
+                      <View key={acc.accountId} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6, padding: 10, backgroundColor: '#f6f9ff', borderRadius: 4 }}>
+                        <View>
+                          <Text style={{ fontSize: 14 }}>{resolveAccountName(acc.accountId)}</Text>
+                          <Text style={{ fontSize: 13, color: '#444' }}>₹{acc.amount.toFixed(2)}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
 
 
@@ -471,20 +495,19 @@ const BalanceSheetScreen = () => {
 const styles = StyleSheet.create({
   subheader: { fontSize: 18, fontWeight: 'bold' },
   section: { marginBottom: 20 },
-  filterRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionContainer: {
-  backgroundColor: '#f0f8ff',
-  borderRadius: 8,
-  padding: 12,
-  marginBottom: 16,
-},
-   container: {
+    backgroundColor: '#f0f8ff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  container: {
     flex: 1,
     padding: 12,
     backgroundColor: '#ffffff',
   },
-screen: {
+  screen: {
     flex: 1,
     backgroundColor: '#f5f6fa',
   },
@@ -492,7 +515,7 @@ screen: {
     padding: 16,
     paddingBottom: 40,
   },
-   header: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -508,80 +531,80 @@ screen: {
     shadowRadius: 4,
     elevation: 6, // For Android
     // Optional: Use gradient background with expo-linear-gradient
-},
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10, // Optional for spacing (or use marginRight)
-},
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10, // Optional for spacing (or use marginRight)
+  },
 
-logo: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-  marginRight: 8,
-},
+  logo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginRight: 8,
+  },
 
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
-},
-sectionHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 10,
-},
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
 
-sectionTitle: {
-  fontSize: 16,
-  fontWeight: 'bold',
-},
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 
-sectionTotal: {
-  fontSize: 16,
-  color: 'green',
-},
+  sectionTotal: {
+    fontSize: 16,
+    color: 'green',
+  },
 
-headerButton: {
-  backgroundColor: '#007bff',
-  paddingVertical: 6,
-  paddingHorizontal: 12,
-  borderRadius: 6,
-},
+  headerButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
 
-headerButtonText: {
-  color: '#fff',
-  fontWeight: 'bold',
-},
+  headerButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 
-toggleText: {
-  color: '#007bff',
-  textDecorationLine: 'underline',
-  fontSize: 12,
-},
+  toggleText: {
+    color: '#007bff',
+    textDecorationLine: 'underline',
+    fontSize: 12,
+  },
 
-detailsContainer: {
-  marginTop: 8,
-},
+  detailsContainer: {
+    marginTop: 8,
+  },
 
-balanceItem: {
-  fontSize: 14,
-  paddingVertical: 4,
-  borderBottomColor: '#ccc',
-  borderBottomWidth: 0.5,
-},
+  balanceItem: {
+    fontSize: 14,
+    paddingVertical: 4,
+    borderBottomColor: '#ccc',
+    borderBottomWidth: 0.5,
+  },
 
-emptyText: {
-  fontSize: 14,
-  color: '#888',
-},
+  emptyText: {
+    fontSize: 14,
+    color: '#888',
+  },
   balanceAmount: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -605,27 +628,33 @@ emptyText: {
     color: '#1a3c70',
   },
   iconButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#007bff',
-  paddingVertical: 6,
-  paddingHorizontal: 12,
-  borderRadius: 6,
-},
-iconButtonText: {
-  color: '#fff',
-  marginLeft: 6,
-  fontSize: 14,
-  fontWeight: '500',
-},
-dropdownWrapper: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#eef3ff',
-  borderRadius: 6,
-  paddingHorizontal: 6,
-  flex: 1,
-},modalContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007bff',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginVertical: 8,
+    color: '#222',
+  },
+  iconButtonText: {
+    color: '#fff',
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dropdownWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eef3ff',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    flex: 1,
+  }, modalContainer: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -659,6 +688,30 @@ dropdownWrapper: {
     color: '#fff',
     fontWeight: 'bold',
   },
+  dateBtn: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  modalBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '90%',
+  },
+  filterRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+},
 });
 
 export default BalanceSheetScreen;

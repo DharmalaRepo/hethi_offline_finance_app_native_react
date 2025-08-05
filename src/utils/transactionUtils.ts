@@ -10,14 +10,13 @@ import { normalizeText } from './textUtils';
 
 export const ensureAccount = async (accountName: string): Promise<Account> => {
   const accounts = await mockDataService.getAccounts();
-  let account = accounts.find(a => normalizeText(a.name) === normalizeText(accountName));
+  let account = accounts.find(a => normalizeText(a.paymentMode) === normalizeText(accountName));
 
   if (!account) {
     const newAccount: Account = {
       id: uuid.v4().toString(),
-      name: accountName,
-      personalName: 'SELF', // or any logic you want
-      bankName: 'CASH',     // or prompt user if needed
+      paymentMode: accountName,
+      personId: ''
     };
 
     await mockDataService.addAccount(newAccount);

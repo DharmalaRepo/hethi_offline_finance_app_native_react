@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image  } from 'react-native';
+import {
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image
+} from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Toast from 'react-native-toast-message';
-import CryptoJS from 'crypto-js';
-
 import {
   importCategories,
   importPersons,
@@ -14,83 +14,108 @@ import {
   importMonthlyOpeningBalances,
 } from '../services/mockDataService';
 
+
 const ImportDataScreen = () => {
   const [jsonData, setJsonData] = useState<any | null>(null);
   const [fileName, setFileName] = useState('');
 
-  const pickFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/json',
-        copyToCacheDirectory: true,
-      });
+  const pickFile = async (type: string) => {
+      try {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: 'application/json',
+          copyToCacheDirectory: true,
+          multiple: false,
+        });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+        if (!result?.assets || result.assets.length === 0) {
+          Alert.alert('No file selected');
+          return;
+        }
+
         const file = result.assets[0];
-        setFileName(file.name);
+        const { uri, name } = file;
 
-        const fileContent = await FileSystem.readAsStringAsync(file.uri);
-        const ENCRYPTION_KEY = 'HETHI_DATA_ENCRYPTION_KEY';
+        const content = await FileSystem.readAsStringAsync(uri);
+        const parsedJson = JSON.parse(content);
 
-        const decryptedBytes = CryptoJS.AES.decrypt(fileContent, ENCRYPTION_KEY);
-        const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
-        const parsedJson = JSON.parse(decryptedText);
+        setFileName(name);
         setJsonData(parsedJson);
 
-        Toast.show({ type: 'success', text1: 'File Loaded Successfully' });
-      }
-    } catch (err: any) {
-      console.error('File Read Error:', err);
-      Toast.show({ type: 'error', text1: 'Failed to load file', text2: err?.message || '' });
-    }
-  };
+        switch (type) {
+          case 'categories':
+            await importCategories(parsedJson.categories || []);
+            break;
+          case 'persons':
+            await importPersons(parsedJson.persons || []);
+            break;
+          case 'accounts':
+            await importAccounts(parsedJson.accounts || []);
+            break;
+          case 'monthlyOpeningBalances':
+            await importMonthlyOpeningBalances(parsedJson.monthlyOpeningBalances || []);
+            break;
+          case 'transactions':
+            await importTransactions(parsedJson.transactions || []);
+            break;
+          case 'recurringPayments':
+            await importRecurringPayments(parsedJson.recurringPayments || []);
+            break;
+          case 'all':
+          default:
+            // Bulk save all if available
+            await Promise.all([
+              importCategories( parsedJson.categories || []),
+              importPersons(parsedJson.persons || []),
+              importAccounts( parsedJson.accounts || []),
+              importMonthlyOpeningBalances(parsedJson.monthlyOpeningBalances || []),
+              importTransactions(parsedJson.transactions || []),
+              importRecurringPayments(parsedJson.recurringPayments || [])
+            ]);
+            break;
+        }
 
-  const handleImport = async () => {
-    if (!jsonData) {
-      Toast.show({ type: 'error', text1: 'No file loaded' });
-      return;
-    }
-
-    try {
-      await importCategories(jsonData.categories || []);
-      await importPersons(jsonData.persons || []);
-      await importAccounts(jsonData.accounts || []);
-      await importMonthlyOpeningBalances(jsonData.monthlyOpeningBalances || []);
-      await importTransactions(jsonData.transactions || []);
-      await importRecurringPayments(jsonData.recurringPayments || []);
-      Toast.show({ type: 'success', text1: 'Data Imported Successfully' });
-    } catch (err: any) {
-      console.error('Import Error:', err);
-      Toast.show({ type: 'error', text1: 'Import Failed', text2: err.message });
-    }
-  };
-
-  const handleSectionImport = async (key: string, fn: Function) => {
-    if (!jsonData || !jsonData[key]) {
-      Toast.show({ type: 'error', text1: `No ${key} data found` });
-      return;
-    }
-
-    try {
-      await fn(jsonData[key]);
-      Toast.show({ type: 'success', text1: `${key} imported successfully` });
-    } catch (err: any) {
-      console.error(`${key} Import Error:`, err);
-      Toast.show({ type: 'error', text1: `${key} import failed`, text2: err.message });
+        Alert.alert('Import Successful', `Data imported for: ${type}`);
+    } catch (error) {
+      console.error('Error importing:', error);
+      Alert.alert('Error', 'Failed to import data.');
     }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-                <View style={styles.header}>
-                         <View style={styles.headerLeft}>
-                            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-                            <Text style={styles.title}> 📥 Import Backup Data</Text>
-                          </View>       
-                      </View> 
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+          <Text style={styles.title}> 📥 Import Backup Data</Text>
+        </View>
+      </View>
 
-      <TouchableOpacity style={styles.button} onPress={pickFile}>
-        <Text style={styles.buttonText}>Select JSON File</Text>
+      <TouchableOpacity style={styles.button} onPress={() => pickFile('all')}>
+        <Text style={styles.buttonText}>Import All Data</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={() => pickFile('categories')}>
+        <Text style={styles.buttonText}>Import Categories</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={() => pickFile('persons')}>
+        <Text style={styles.buttonText}>Import Persons</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={() => pickFile('accounts')}>
+        <Text style={styles.buttonText}>Import Accounts</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={() => pickFile('monthlyOpeningBalances')}>
+        <Text style={styles.buttonText}>Import Monthly Opening</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={() => pickFile('transactions')}>
+        <Text style={styles.buttonText}>Import Transactions</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={() => pickFile('recurringPayments')}>
+        <Text style={styles.buttonText}>Import Recurring Payments</Text>
       </TouchableOpacity>
 
       {fileName && <Text style={styles.fileText}>Loaded: {fileName}</Text>}
@@ -104,30 +129,6 @@ const ImportDataScreen = () => {
           <Text>✅ Transactions: {jsonData.transactions?.length || 0}</Text>
           <Text>✅ Recurring Payments: {jsonData.recurringPayments?.length || 0}</Text>
 
-          <TouchableOpacity style={styles.importAllBtn} onPress={handleImport}>
-            <Text style={styles.buttonText}>🚀 Import All</Text>
-          </TouchableOpacity>
-
-          <View style={{ gap: 8, marginTop: 14 }}>
-            <TouchableOpacity onPress={() => handleSectionImport('categories', importCategories)}>
-              <Text style={styles.link}>Import Categories</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSectionImport('persons', importPersons)}>
-              <Text style={styles.link}>Import Persons</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSectionImport('accounts', importAccounts)}>
-              <Text style={styles.link}>Import Accounts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSectionImport('monthlyOpeningBalances', importMonthlyOpeningBalances)}>
-              <Text style={styles.link}>Import Monthly Opening</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSectionImport('transactions', importTransactions)}>
-              <Text style={styles.link}>Import Transactions</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSectionImport('recurringPayments', importRecurringPayments)}>
-              <Text style={styles.link}>Import Recurring Payments</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       )}
     </ScrollView>
@@ -136,73 +137,39 @@ const ImportDataScreen = () => {
 
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#f9f9f9', flexGrow: 1 },
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f6fa',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 30,
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  logo: { width: 28, height: 28, resizeMode: 'contain', marginRight: 8 },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  button: {
+    backgroundColor: '#007bff', padding: 12, borderRadius: 6, marginBottom: 10,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginVertical: 8,
-    color: '#222',
+  importAllBtn: {
+    backgroundColor: '#28a745', padding: 12, borderRadius: 6, marginTop: 10,
   },
-   header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#0984e3',
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  marginBottom: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 6, // For Android
-  // Optional: Use gradient background with expo-linear-gradient
-},
-  heading: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: '#2c3e50',
-  },
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-
-headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10, // Optional for spacing (or use marginRight)
-},
-
-logo: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-  marginRight: 8,
-},
-
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
-},
-  button: { backgroundColor: '#007bff', padding: 12, borderRadius: 6, marginBottom: 10 },
-  importAllBtn: { backgroundColor: '#28a745', padding: 12, borderRadius: 6, marginTop: 10 },
   buttonText: { color: '#fff', textAlign: 'center', fontWeight: '600' },
   fileText: { marginVertical: 6, fontStyle: 'italic', textAlign: 'center', color: '#333' },
-  previewBox: { backgroundColor: '#fff', padding: 14, borderRadius: 10, marginTop: 10, elevation: 2 },
-  link: { color: '#007bff', fontWeight: 'bold', textAlign: 'center', paddingVertical: 6, fontSize: 15 },
+  previewBox: {
+    backgroundColor: '#fff', padding: 14, borderRadius: 10, marginTop: 10, elevation: 2,
+  },
+  link: {
+    color: '#007bff', fontWeight: 'bold', textAlign: 'center', paddingVertical: 6, fontSize: 15,
+  },
 });
 
 export default ImportDataScreen;

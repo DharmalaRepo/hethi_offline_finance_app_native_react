@@ -3,13 +3,19 @@ import { NavigatorScreenParams } from "@react-navigation/native";
 export type RootStackParamList = {
   MainTabs: undefined;
   BottomTabs: undefined;
-  Transactions: undefined;
+  Transactions: {
+    filters?: {
+      type?: 'income' | 'expense';
+      month?: number;
+      year?: number;
+    };
+  };
   LogTransaction: undefined;
   SetupWizard: undefined;
   LockScreen: undefined;
   Dashboard: undefined;
   Root: NavigatorScreenParams<BottomTabParamList>;
-  MoreNavigator: { screen: keyof MoreStackParamList };
+  More: { screen: keyof MoreStackParamList };
 };
 
 export type BottomTabParamList = {
@@ -18,6 +24,7 @@ export type BottomTabParamList = {
   MoreNavigator: undefined;
   Reports: undefined;
   BalanceSheets: undefined;
+  More: undefined;
 };
 
 

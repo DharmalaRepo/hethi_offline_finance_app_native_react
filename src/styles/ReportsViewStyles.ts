@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#f8fbff',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)', // semi-transparent white
     flex: 1,
   },
   toggleRow: {
@@ -192,6 +192,14 @@ logo: {
     borderRadius: 8,
     marginBottom: 12,
   },
+  dateBtn: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
   filters: {
     marginBottom: 16,
   },
@@ -262,6 +270,22 @@ exportBtn: {
   padding: 10,
   borderRadius: 8,
 },
+modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '90%',
+  },
 });
 
 export default styles;

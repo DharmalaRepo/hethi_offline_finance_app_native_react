@@ -1,4 +1,4 @@
-import React, { useEffect, useState }  from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Image, Switch,
-  Dimensions,
+  Dimensions, Modal, Pressable,
+  Alert, Button
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -25,29 +26,37 @@ import { SubCategory } from '../models/SubCategory';
 import { Transaction } from '../models/Transaction';
 import { RecurringPayment } from '../models/RecurringPayment';
 import ReminderCard from '../components/ReminderCard'; // adjust the path as needed
-import { getCategories, getAllTransactions, getAllRecurringPayments, getPersons, getAllPersons, getAccounts, addCategory, 
-  addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues } from '../services/mockDataService';
+import {
+  getCategories, getAllTransactions, getAllRecurringPayments, getPersons, getAllPersons, getAccounts, addCategory,
+  addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues
+} from '../services/mockDataService';
 import { isSameDay, parseISO, isAfter, isBefore } from 'date-fns';
-import { useAppContext  } from '../context/AppContext';
+import { useAppContext } from '../context/AppContext';
+import { loadPredefinedCategories } from '../screens/DataManagementScreen';
+import { getCurrentMonthRange } from '../utils/dateUtils';
+import SavingsBreakdownModal from '../components/SavingsBreakdownModal';
+
 
 type Props = {
   title: string;
   value: number;
   icon: string;
   color: string;
+  onPress?: () => void;
 };
-
 
 const screenWidth = Dimensions.get('window').width;
 
 const DashboardScreen = () => {
-  
+
   type DashboardNavigationProp = CompositeNavigationProp<
-    NativeStackNavigationProp<RootStackParamList>,
+    NativeStackNavigationProp<RootStackParamList, 'More'>,
     NativeStackNavigationProp<MoreStackParamList>
   >;
+  const navigation = useNavigation<DashboardNavigationProp>();
 
-const navigation = useNavigation<DashboardNavigationProp>();
+  type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Transactions'>;
+  const navigation2 = useNavigation<NavigationProp>();
 
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
@@ -57,86 +66,144 @@ const navigation = useNavigation<DashboardNavigationProp>();
   const [todaysReminders, setTodaysReminders] = useState<RecurringPayment[]>([]);
   const [personCount, setPersonCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);
-  
+  const [modalVisible, setModalVisible] = useState(false);
+  const { startDate, endDate } = getCurrentMonthRange();
+  const [savingsModalVisible, setSavingsModalVisible] = useState(false);
+  const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+  const currentYear = new Date().getFullYear();
+  const [showSavingsModal, setShowSavingsModal] = useState(false);
+  const [topIncomeCategories, setTopIncomeCategories] = useState<{ name: string; amount: number }[]>([]);
+  const [topExpenseCategories, setTopExpenseCategories] = useState<{ name: string; amount: number }[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
+  const [categories, setCategories] = useState<Category[]>([]);
 
-    const SummaryCard = ({ title, value, icon, color }: Props) => {      
-
-      return (
-        <View style={[styles.card, { borderLeftColor: color }]}>
-          <View style={styles.row}>
-            <Ionicons name={icon as any} size={24} color={color} style={styles.icon} />
-            <Text style={styles.title}>{title}</Text>
-          </View>
+  const SummaryCard = ({ title, value, icon, color, onPress }: Props) => {
+    return (
+      <TouchableOpacity onPress={onPress} style={[styles.card, { borderLeftColor: color }]}>
+        <View style={styles.row}>
+          <Ionicons name={icon as any} size={12} color={color} style={styles.icon} />
           <Text style={[styles.value, { color }]}>
             {showSensitiveData ? `₹${value}` : '₹****'}
           </Text>
         </View>
-      );
+      </TouchableOpacity>
+    );
+  };
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      const data = await getCategories(); // adjust import path
+      setCategories(data);
     };
-  
-  
+    loadCategories();
+  }, []);
 
-useEffect(() => {
-  loadDashboardData(); // call async wrapper
-}, []);
+  useEffect(() => {
+    loadDashboardData(); // call async wrapper
+  }, []);
 
-const today = new Date();
+  useEffect(() => {
+    const loadTxns = async () => {
+      const data = await getAllTransactions(); // adjust import path if needed
+      setTransactions(data);
+    };
+    loadTxns();
+  }, []);
 
-const loadDashboardData = async () => {
-      const today = new Date().toISOString().slice(0, 10);      
+  useEffect(() => {
+    const calculateTopCategories = () => {
+      const incomeMap: { [key: string]: number } = {};
+      const expenseMap: { [key: string]: number } = {};
 
-      const transactions = await getAllTransactions();
-      const reminders= await getAllRecurringPayments();
-      const filtered = reminders.filter(r => {
-          //console.log(r);
-         const today1 = new Date()
-        const todayDate = today1.getDate();
-        if (!r.startDate || !r.endDate) return false;
-
-        const start = parseISO(r.startDate);
-        const end = parseISO(r.endDate);
-
-        const startDay = start.getDate();
-
-        const hasSameDate = todayDate === startDay;
-        const isWithinRange = (isAfter(today, start) || isSameDay(today, start)) &&
-                              (isBefore(today, end) || isSameDay(today, end));
-
-        return hasSameDate && isWithinRange;
+      transactions.forEach(txn => {
+        if (txn.type === 'income') {
+          incomeMap[txn.categoryId] = (incomeMap[txn.categoryId] || 0) + txn.amount;
+        } else if (txn.type === 'expense') {
+          expenseMap[txn.categoryId] = (expenseMap[txn.categoryId] || 0) + txn.amount;
+        }
       });
 
-      setTodaysReminders(filtered);
-      setReversibleCount(transactions.filter(t => t.isReversible && !t.isSettled).length);
-      setTotalIncome(transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0));
-      setTotalExpense(transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0));
+      const getCategoryName = (categoryId: string) => {
+        const category = categories.find(cat => cat.id === categoryId);
+        return category ? category.name : 'Unknown';
+      };
 
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
+      const sortedIncome = Object.entries(incomeMap)
+        .map(([id, amount]) => ({ name: getCategoryName(id), amount }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 3); // Top 3
 
-      setMonthlyIncome(transactions
-        .filter(t => {
-          const d = new Date(t.date);
-          return t.type === 'income' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        })
-        .reduce((sum, t) => sum + t.amount, 0));
-      setMonthlyExpense(transactions
-        .filter(t => {
-          const d = new Date(t.date);
-          return t.type === 'expense' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        })
-        .reduce((sum, t) => sum + t.amount, 0));
+      const sortedExpense = Object.entries(expenseMap)
+        .map(([id, amount]) => ({ name: getCategoryName(id), amount }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 3); // Top 3
 
-      const persons = await getAllPersons();
-      setPersonCount(persons.length);
-      const categories = await getCategories();
-      setCategoriesCount(categories.length);
+      setTopIncomeCategories(sortedIncome);
+      setTopExpenseCategories(sortedExpense);
+    };
+
+    if (transactions.length && categories.length) {
+      calculateTopCategories();
+    }
+  }, [transactions, categories]);
+
+  const today = new Date();
+
+  const loadDashboardData = async () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const transactions = await getAllTransactions();
+    const reminders = await getAllRecurringPayments();
+    const filtered = reminders.filter(r => {
+      //console.log(r);
+      const today1 = new Date()
+      const todayDate = today1.getDate();
+      if (!r.startDate || !r.endDate) return false;
+
+      const start = parseISO(r.startDate);
+      const end = parseISO(r.endDate);
+
+      const startDay = start.getDate();
+
+      const hasSameDate = todayDate === startDay;
+      const isWithinRange = (isAfter(today, start) || isSameDay(today, start)) &&
+        (isBefore(today, end) || isSameDay(today, end));
+
+      return hasSameDate && isWithinRange;
+    });
+
+    setTodaysReminders(filtered);
+    setReversibleCount(transactions.filter(t => t.isReversible && !t.isSettled).length);
+    setTotalIncome(transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0));
+    setTotalExpense(transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0));
+
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    setMonthlyIncome(transactions
+      .filter(t => {
+        const d = new Date(t.date);
+        return t.type === 'income' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      })
+      .reduce((sum, t) => sum + t.amount, 0));
+    setMonthlyExpense(transactions
+      .filter(t => {
+        const d = new Date(t.date);
+        return t.type === 'expense' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      })
+      .reduce((sum, t) => sum + t.amount, 0));
+
+    const persons = await getAllPersons();
+    setPersonCount(persons.length);
+    const categories = await getCategories();
+    setCategoriesCount(categories.length);
   };
 
 
   const reloadConfig = async () => {
-      console.log('Reload dashboard data');
-    loadDashboardData(); 
+    console.log('Reload dashboard data');
+    loadDashboardData();
     const fetchedCategories = await getCategories();
     const allSubCategories = fetchedCategories.flatMap(cat =>
       (cat.subcategories || []).map(sub => ({ ...sub, categoryId: cat.id }))
@@ -145,103 +212,192 @@ const loadDashboardData = async () => {
     const accounts = await getAccounts();
   };
 
+  const MiniCard = ({ label, value, color }: { label: string, value: number, color: string }) => (
+    <View style={styles.card}>
+      <Text style={[styles.label, { color }]}>{label}</Text>
+      <Text style={[styles.amount, { color }]}>{value.toFixed(2)}</Text>
+    </View>
+  );
+
+  const handleLoadPredefined = async () => {
+    await loadPredefinedCategories();
+    Alert.alert('Success', 'Predefined categories and subcategories loaded!');
+  };
+
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* Header with logo and title and bell */}
       <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-              <Text style={styles.title}>Dashboard</Text>
-            </View>
-
-            <View style={styles.headerRight}>
-              <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
-                <Ionicons name="refresh" size={22} color="#fff" />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => navigation.navigate('SetupWizard')} style={styles.iconButton}>
-                <Ionicons name="notifications-outline" size={24} color="#fff" />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={toggleSensitiveData} style={styles.iconButton}>
-                <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={22} color="#fff" />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => setModalVisible(true)}>
+            <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Dashboard</Text>
+        </View>
+        <Modal visible={modalVisible} transparent={true} animationType="fade">
+          <View style={styles.modalContainer}>
+            <Pressable onPress={() => setModalVisible(false)} style={styles.modalBackground}>
+              <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
+            </Pressable>
           </View>
+        </Modal>
 
-      {/* Overall Summary Row */}
-      <Text style={styles.sectionTitle}>Overall Summary</Text>
-      <View style={styles.summaryRow}>
-        <SummaryCard title="Income" value={totalIncome} icon="arrow-down" color="#00b894" />
-        <SummaryCard title="Expense" value={totalExpense} icon="arrow-up" color="#d63031" />
-        <SummaryCard title="Savings" value={totalIncome - totalExpense} icon="wallet" color="#0984e3" />
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
+            <Ionicons name="refresh" size={22} color="#fff" />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={toggleSensitiveData} style={styles.iconButton}>
+            <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Monthly Summary Row */}
-      <Text style={styles.sectionTitle}>This Month</Text>
-      <View style={styles.summaryRow}>
+      <View style={styles.summaryContainer}>
+        <Text style={styles.sectionTitle}>Overall Summary</Text>
+        <View style={styles.summaryRow}>
+          <SummaryCard title="Income" value={totalIncome} icon="arrow-down" color="#00b894" onPress={() =>
+            navigation2.navigate('Transactions', { filters: { type: 'income' } })} />
 
-        <SummaryCard title="Income" value={monthlyIncome} icon="arrow-down" color="#00b894" />
-        <SummaryCard title="Expense" value={monthlyExpense} icon="arrow-up" color="#d63031" />
-        <SummaryCard title="Savings" value={monthlyIncome-monthlyExpense} icon="wallet" color="#0984e3" />
+          <SummaryCard title="Expense" value={totalExpense} icon="arrow-up" color="#d63031" onPress={() =>
+            navigation2.navigate('Transactions', {
+              filters: { type: 'expense', month: new Date().getMonth() + 1, year: new Date().getFullYear(), }
+            })} />
+
+          <SummaryCard title="Savings" value={totalIncome - totalExpense} icon="wallet" color="#0984e3"
+            onPress={() => setShowSavingsModal(true)} />
+        </View>
       </View>
+
+      <View style={styles.summaryContainer}>
+        <Text style={styles.sectionTitle}>This Month</Text>
+        <View style={styles.summaryRow}>
+          {/* Monthly Income */}
+          <SummaryCard
+            title="Income"
+            value={monthlyIncome}
+            icon="arrow-down"
+            color="#00b894"
+            onPress={() =>
+              navigation2.navigate('Transactions', {
+                filters: {
+                  type: 'income',
+                  month: new Date().getMonth() + 1,
+                  year: new Date().getFullYear(),
+                },
+              })
+            }
+          />
+
+          {/* Monthly Expense */}
+          <SummaryCard
+            title="Expense"
+            value={monthlyExpense}
+            icon="arrow-up"
+            color="#d63031"
+            onPress={() =>
+              navigation2.navigate('Transactions', {
+                filters: {
+                  type: 'expense',
+                  month: new Date().getMonth() + 1,
+                  year: new Date().getFullYear(),
+                },
+              })
+            }
+          />
+
+          {/* Monthly Savings (non-clickable) */}
+          <SummaryCard
+            title="Savings"
+            value={monthlyIncome - monthlyExpense}
+            icon="wallet"
+            color="#0984e3" onPress={() => setShowSavingsModal(true)}
+          />
+        </View>
+      </View>
+
+      {categoriesCount === 0 && (
+        <View style={{ padding: 16 }}>
+          <Button title="Use Starter Categories" onPress={handleLoadPredefined} />
+        </View>
+      )}
 
       {/* Quick Navigation */}
       <Text style={styles.sectionTitle}>Quick Links</Text>
       <View style={styles.quickLinks}>
-        <TouchableOpacity
-          style={[styles.quickCard, { backgroundColor: '#0984e3' }]}
-          onPress={() => navigation.navigate('MoreNavigator', { screen: 'Persons',})}
-        >
+        <TouchableOpacity style={[styles.quickCard, { backgroundColor: '#0984e3' }]} onPress={() => navigation.navigate('More', { screen: 'Persons', })} >
           <Ionicons name="people-outline" size={22} color="#fff" />
           <Text style={styles.quickText}> Person ({personCount}) </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.quickCard, { backgroundColor: '#6c5ce7' }]}
-          onPress={() => navigation.navigate('MoreNavigator', { screen: 'Categories' })}
-        >
+        <TouchableOpacity style={[styles.quickCard, { backgroundColor: '#0984e3' }]} onPress={() => navigation.navigate('More', { screen: 'Categories' })} >
           <Ionicons name="pricetags-outline" size={22} color="#fff" />
           <Text style={styles.quickText}> Categories ({categoriesCount})</Text>
-        </TouchableOpacity>        
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.quickLinks}>
+        <TouchableOpacity style={[styles.quickCard, { backgroundColor: '#0984e3' }]} onPress={() => navigation.navigate('More', { screen: 'SetPin', })} >
+          <Ionicons name="lock-closed-outline" size={22} color="#fff" />
+          <Text style={styles.quickText}> Set/Update PIN </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.quickCard, { backgroundColor: '#0984e3' }]} onPress={() => navigation.navigate('More', { screen: 'SetupWizard' })} >
+          <Ionicons name="settings-outline" size={22} color="#fff" />
+          <Text style={styles.quickText}> Enable PIN/Settings </Text>
+        </TouchableOpacity>
+
       </View>
 
       {/* Reminders */}
       <Text style={styles.sectionTitle}>Payment Reminders</Text>
       <View style={styles.card}>
 
-      {todaysReminders.length === 0 ? (
-        <View style={styles.emptyReminderContainer}>
-          <TouchableOpacity
-            style={styles.addReminderButton}
-            onPress={() => navigation.navigate('MoreNavigator', { screen: 'RecurringPayments' })}
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#fff" />
-            <Text style={styles.addReminderText}>No reminders for today. Add +</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        todaysReminders.map((reminder) => (
-          <ReminderCard 
-          key={reminder.id}
-          title={reminder.title}
-          dueDate={reminder.dueDate} />
-        ))
-      )}
-  </View>
+        {todaysReminders.length === 0 ? (
+          <View style={styles.emptyReminderContainer}>
+            <TouchableOpacity
+              style={styles.addReminderButton}
+              onPress={() => navigation.navigate('More', { screen: 'RecurringPayments' })}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#fff" />
+              <Text style={styles.addReminderText}>No reminders for today. Add +</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          todaysReminders.map((reminder) => (
+            <ReminderCard
+              key={reminder.id}
+              title={reminder.title}
+              dueDate={reminder.dueDate} />
+          ))
+        )}
+      </View>
 
-      {/* Reversible Transactions */}
-      <Text style={styles.sectionTitle}>Reversible Transactions</Text>
-      <TouchableOpacity
-        style={[styles.card, styles.reversible]}
-        onPress={() => navigation.navigate('MoreNavigator', { screen: 'ReversibleTransactions' })}
-      >
-        <Ionicons name="swap-horizontal-outline" size={22} color="#fff" />
-        <Text style={styles.reversibleText}>You have {reversibleCount} pending reversals</Text>
-      </TouchableOpacity>
+      <View style={{ marginTop: 24 }}>
+        {/* Reversible Transactions */}
+        <Text style={styles.sectionTitle}>Reversible Transactions</Text>
+        <TouchableOpacity
+          style={[styles.card, styles.reversible]}
+          onPress={() => navigation.navigate('More', { screen: 'ReversibleTransactions' })}
+        >
+          <View style={styles.reversible}>
+            <Ionicons name="swap-horizontal-outline" size={22} color="#fff" />
+            <Text style={styles.reversibleText}>
+              You have {reversibleCount} pending reversals
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
 
-      
-
+      <SavingsBreakdownModal
+        visible={showSavingsModal}
+        onClose={() => setShowSavingsModal(false)}
+        totalIncome={totalIncome}
+        totalExpense={totalExpense}
+        topIncomeCategories={topIncomeCategories}
+        topExpenseCategories={topExpenseCategories}
+      />
     </ScrollView>
   );
 };
@@ -264,63 +420,93 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 40,
+    marginBottom: 6,
   },
   header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#0984e3',
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  marginBottom: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 6, // For Android
-  // Optional: Use gradient background with expo-linear-gradient
-},
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-
-headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10, // Optional for spacing (or use marginRight)
-},
-
-logo: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-  marginRight: 8,
-},
-
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
-},
-
-iconButton: {
-  marginLeft: 12,
-},
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-    marginLeft: 4,
-    color: '#2d3436',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10, // Optional for spacing (or use marginRight)
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 6,
+  },
+  card: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 4,
+    marginHorizontal: 4,
+    backgroundColor: '#fff',
+    padding: 6,
+    borderRadius: 4,
+    borderLeftWidth: 2,
+    elevation: 1,
+  },
+  summaryContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 16,
+    elevation: 2,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  icon: {
+    marginRight: 6,
+  },
+  value: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 6,
+    color: '#444',
+    marginLeft: 4,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  logo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginRight: 8,
+  },
+  iconButton: {
+    marginLeft: 12,
+    color: '#fff',
   },
   summaryCard: {
     backgroundColor: '#ffffff',
@@ -332,6 +518,7 @@ iconButton: {
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+
   },
   iconCircle: {
     width: 30,
@@ -362,33 +549,30 @@ iconButton: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
+    marginBottom: 6,
   },
   quickText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '500',
-  },
-  card: {
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 16,
   },
   reminderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    gap: 10,
+    borderBottomColor: '#ddd',
   },
   reminderText: {
     fontSize: 15,
     color: '#2d3436',
   },
   reversible: {
-    backgroundColor: '#d63031',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center', // optional
+    backgroundColor: '#d63031',
+    borderRadius: 10,
+    padding: 10,
+    gap: 8, // or use marginRight on icon
   },
   reversibleText: {
     color: '#fff',
@@ -396,43 +580,53 @@ iconButton: {
     fontWeight: '500',
   },
   emptyReminderContainer: {
-  backgroundColor: '#f9f9f9',
-  padding: 16,
-  borderRadius: 10,
-  alignItems: 'center',
-  marginBottom: 20,
-},
-
-emptyReminderText: {
-  fontSize: 16,
-  color: '#777',
-  marginBottom: 12,
-},
-
-addReminderButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#0984e3',
-  paddingVertical: 8,
-  paddingHorizontal: 16,
-  borderRadius: 8,
-},
-
-addReminderText: {
-  color: '#fff',
-  fontSize: 16,
-  fontWeight: '500',
-  marginLeft: 8,
-},row: {
+    backgroundColor: '#f9f9f9',
+    padding: 8,
+    borderRadius: 4,
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  emptyReminderText: {
+    fontSize: 16,
+    color: '#777',
+    marginBottom: 12,
+  },
+  addReminderButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
-  icon: {
-    marginRight: 8,
+  addReminderText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 8,
   },
-  value: {
-    marginTop: 8,
-    fontSize: 20,
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '90%',
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  amount: {
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

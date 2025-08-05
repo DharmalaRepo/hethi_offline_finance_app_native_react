@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { getAppSettings, saveAppSettings } from '../services/mockDataService';
+import { getAppSettings, saveAppSettings, getPin } from '../services/mockDataService';
 import { AppSettings } from '../models/AppSettings';
 import { getAccounts } from '../services/mockDataService';
 import { getAllPersons } from '../services/mockDataService';
@@ -17,6 +17,9 @@ import { useThemeContext } from '../components/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { MoreStackParamList } from '../navigation/routes'; // Adjust path
 import { StackNavigationProp } from '@react-navigation/stack';
+import { ToastAndroid } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { Alert } from 'react-native';
 
 
 const SetupWizardScreen = () => {
@@ -26,6 +29,7 @@ const SetupWizardScreen = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
   const { toggleTheme } = useThemeContext();
+  const [isPinSet, setIsPinSet] = useState(false);
   const navigation = useNavigation<StackNavigationProp<MoreStackParamList>>();
   const [settings, setSettings] = useState<AppSettings>({
     pinEnabled: false,
@@ -39,6 +43,14 @@ const SetupWizardScreen = () => {
 
   useEffect(() => {
     loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    const checkPin = async () => {
+      const pin = await getPin();
+      setIsPinSet(!!pin); // true if pin is set
+    };
+    checkPin();
   }, []);
 
   const loadInitialData = async () => {
@@ -127,12 +139,21 @@ const SetupWizardScreen = () => {
         <Text style={styles.sectionTitle}>🔐 Security Settings</Text>
 
         <View style={styles.switchRow}>
-          <Text style={styles.label}>Enable PIN Protection</Text>
+          <Text style={[styles.label, { color: isPinSet ? '#333' : '#aaa' }]}>
+            Use pin for login
+          </Text>
           <Switch
             value={settings.pinEnabled || false}
-            onValueChange={(val) =>
-              setSettings({ ...settings, pinEnabled: val })
-            }
+            onValueChange={(val) => {
+              if (!isPinSet) {
+                ToastAndroid.show(
+                  'PIN not set. Please set a PIN before enabling it.',
+                  ToastAndroid.LONG
+                );
+                return;
+              }
+              setSettings({ ...settings, pinEnabled: val });
+            }}
           />
         </View>
 
@@ -141,14 +162,20 @@ const SetupWizardScreen = () => {
             style={styles.button}
             onPress={() => {
               navigation.navigate('SetPin');
-              showToast('info', 'Use PIN Protection screen to set/change your PIN');
+              Toast.show({
+                type: 'info',
+                text1: 'PIN Info',
+                text2: 'Use the screen to set or change your PIN',
+              });
             }}
           >
             <Text style={styles.buttonText}>Set / Change PIN</Text>
           </TouchableOpacity>
         )}
+
+
         <View style={styles.switchRow}>
-          <Text style={styles.label}>Enable Biometric Unlock</Text>
+          <Text style={styles.label}>Use Biometric for login</Text>
           <Switch
             value={settings.biometricEnabled || false}
             onValueChange={(val) => setSettings({ ...settings, biometricEnabled: val })}

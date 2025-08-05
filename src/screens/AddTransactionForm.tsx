@@ -207,7 +207,7 @@ const AddTransactionForm: React.FC<Props> = ({ categories = [],
         />
 
         <Dropdown
-          data={accounts.map(a => ({ label: a.accountTypeOrName, value: a.id }))}
+          data={accounts.map(a => ({ label: a.paymentMode, value: a.id }))}
           labelField="label"
           valueField="value"
           placeholder="Select Account"

@@ -20,11 +20,13 @@ const menuItems = [
   { label: 'Setup Wizard', icon: 'settings-outline', screen: 'SetupWizard' },
   { label: 'Manage Persons', icon: 'people-outline', screen: 'Persons' },
   { label: 'Manage Categories', icon: 'pricetags-outline', screen: 'Categories' },
-  { label: 'Reversible Transactions', icon: 'swap-horizontal-outline', screen: 'ReversibleTransactions' },
+  { label: 'Track Returns', icon: 'swap-horizontal-outline', screen: 'ReversibleTransactions' },
   { label: 'Recurring Payments', icon: 'repeat-outline', screen: 'RecurringPayments' },  
   { label: 'Import Data', icon: 'cloud-download-outline', screen: 'ImportData' },
   { label: 'Export Data', icon: 'cloud-upload-outline', screen: 'ExportData' },
   { label: 'Data Management', icon: 'server-outline', screen: 'DataManagement' },
+  { label: 'Optional Expenses', icon: 'server-outline', screen: 'OptionalExpenses' },
+  
   
 ];
 
@@ -118,7 +120,7 @@ title: {
   color: '#fff',
 },
   subtext: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#636e72',
     marginBottom: 20,
     textAlign: 'center',

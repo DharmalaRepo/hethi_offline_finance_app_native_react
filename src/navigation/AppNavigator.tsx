@@ -12,6 +12,7 @@ const Stack = createNativeStackNavigator();
 const AppNavigator = () => {
   const { navTheme } = useThemeContext(); // 👈 Navigation theme (light/dark)
 
+
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator initialRouteName="Transactions">

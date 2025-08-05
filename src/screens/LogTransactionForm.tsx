@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Button,  Image} from 'react-native';
+import {
+  View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Button,
+  Image, Pressable, Switch
+} from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Category } from '../models/Category';
 import { Person } from '../models/Person';
 import { Account } from '../models/Account';
 import { SubCategory } from '../models/SubCategory';
 import { Transaction } from '../models/Transaction';
-import { getCategories, getPersons, getAllPersons, getAccounts, addCategory, 
-  addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues } from '../services/mockDataService';
+import {
+  getCategories, getPersons, getAllPersons, getAccounts, addCategory,
+  addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues, addAccountToPerson
+} from '../services/mockDataService';
 import { showToast, validateTransactionData, autoDetectFromNotes } from '../utils/transactionUtils';
-import * as mockDataService from '../services/mockDataService';
+import { saveCategories } from '../services/mockDataService';
 import { Ionicons } from '@expo/vector-icons';
 import uuid from 'react-native-uuid';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {commonStyles} from '../styles/commonStyles'; 
+import { commonStyles } from '../styles/commonStyles';
 import { Checkbox } from 'react-native-paper';
-import { FlatList } from 'react-native';
 import { Modal } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { ToastAndroid } from 'react-native';
@@ -31,32 +34,26 @@ import type { RootStackParamList, MoreStackParamList } from '../navigation/route
 
 const LogTransactionForm = () => {
 
-    type DashboardNavigationProp = CompositeNavigationProp<
-      NativeStackNavigationProp<RootStackParamList>,
-      NativeStackNavigationProp<MoreStackParamList>
-    >;
-  
+  type DashboardNavigationProp = CompositeNavigationProp<
+    NativeStackNavigationProp<RootStackParamList>,
+    NativeStackNavigationProp<MoreStackParamList>
+  >;
+
   const navigation = useNavigation<DashboardNavigationProp>();
 
+  const [modalVisible, setModalVisible] = useState(false);
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
   const [note, setNote] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
-  const [category, setCategory] = useState<Category | null>(null);
-  const [subCategory, setSubCategory] = useState<SubCategory | null>(null);
-  const [person, setPerson] = useState<Person | null>(null);
-  const [account, setAccount] = useState<Account | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isReversible, setIsReversible] = useState(false);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [markAsReturned, setMarkAsReturned] = useState(false);
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const [isSettled, setIsSettled] = useState(false);
-  const [showCategoryList, setShowCategoryList] = useState(false);
-  const [showSubCategoryList, setShowSubCategoryList] = useState(false);
   const [showAddSubcategoryModal, setShowAddSubcategoryModal] = useState(false);
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
@@ -64,11 +61,25 @@ const LogTransactionForm = () => {
   const [fromOrToPersonName, setFromOrToPersonName] = useState<string>('');
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
+  const [isOptional, setIsOptional] = useState<boolean>(false);
+  const [smartSuggestEnabled, setSmartSuggestEnabled] = useState(true);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [showCategoryList, setShowCategoryList] = useState(false);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [subCategory, setSubCategory] = useState<SubCategory | null>(null);
+  const [showSubCategoryList, setShowSubCategoryList] = useState(false);
+  const [subCategorySearch, setSubCategorySearch] = useState('');
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [showPersonList, setShowPersonList] = useState(false);
-  const [isForFromOrToPerson, setIsForFromOrToPerson] = useState(false);
-  const [availableAccounts, setAvailableAccounts] = useState<Account[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [personSearch, setPersonSearch] = useState('');
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [accountSearch, setAccountSearch] = useState('');
+  const [showAccountList, setShowAccountList] = useState(false);
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+
+  //const [person, setPerson] = useState<Person | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
 
   const reloadConfig = async () => {
     setCategories(await getCategories());
@@ -80,90 +91,117 @@ const LogTransactionForm = () => {
   }, []);
 
   useEffect(() => {
-  if (note.length >= 2) {
-    const result = autoDetectFromNotes(note, categories);
-    if (result.category) {
-      setCategory(result.category);
+    setSubCategory(null);
+    setSubCategorySearch('');
+    setShowSubCategoryList(false);
+  }, [category]);
+
+  useEffect(() => {
+    if (!smartSuggestEnabled) {
+      setCategory(null);
+      setSubCategory(null);
     }
-    if (result.subCategory) {
-      setSubCategory(result.subCategory);
+  }, [smartSuggestEnabled]);
+
+  useEffect(() => {
+    if (type !== 'expense') {
+      setIsOptional(false); // Reset optional when not expense
     }
-  }
-}, [note]);
+  }, [type]);
+
+  useEffect(() => {
+    setSelectedAccount(null);
+    setAccountSearch('');
+    setShowAccountList(false);
+  }, [selectedPerson]);
+
+  useEffect(() => {
+    if (!smartSuggestEnabled) return;
+
+    if (note.length >= 2) {
+      const result = autoDetectFromNotes(note, categories);
+      if (result.category) {
+        setCategory(result.category);
+      }
+      if (result.subCategory) {
+        setSubCategory(result.subCategory);
+      }
+    }
+  }, [note, smartSuggestEnabled, categories]);
 
   const handleDateConfirm = (selectedDate: Date) => {
     setShowDatePicker(false);
     setDate(selectedDate);
   };
 
-
   // ✅ HANDLE NOTES BLUR TO DETECT CATEGORY/SUBCATEGORY
-const handleNotesBlur = () => {
-  const result = autoDetectFromNotes(note, categories);
-  if (result.category) setCategory(result.category);
-  if (result.subCategory) setSubCategory(result.subCategory);
-};
+  const handleNotesBlur = () => {
+    if (!smartSuggestEnabled) return;
+    const result = autoDetectFromNotes(note, categories);
+    if (result.category) setCategory(result.category);
+    if (result.subCategory) setSubCategory(result.subCategory);
+  };
 
-// ✅ PICKER HELPERS
-const openCategoryPicker = async () => {
-  const name = prompt('Enter new category name');
-  if (!name) return;
-  const newCategory = { id: uuid.v4().toString(), name, subcategories: [] };
-  await addCategory(newCategory);
-  await new Promise(res => setTimeout(res, 100)); 
-  await reloadConfig(); 
-   // Re-fetch the saved category with updated ID from AsyncStorage
-  const refreshed = await getCategories();
-  const matched = refreshed.find(cat => cat.name.toLowerCase() === name.toLowerCase());
-
-  if (!matched) {
-    console.warn('Category not found in AsyncStorage:', category?.id);
-    showToast('error', 'Category not available');
-    return;
-  }
-
-
-  if (matched) {
-    setCategory(matched); // ✅ use fresh object that exists in storage
-    setSubCategory(null); // reset subcategory when category changes
-    showToast('success', 'New category added');
-  } else {
-    showToast('error', 'Failed to reload new category');
-  }
-};
-
-const openSubCategoryPicker = async () => {
-  if (!category) return;
-
-  const name = prompt('Enter sub-category');
-  if (!name || !name.trim()) return;
-
-  try {
-    const newSub: SubCategory = {
-      id: uuid.v4().toString(),
-      name: name.trim(),
-      categoryId: category.id,
-    };
-
-    await addSubCategory(category.id, newSub);
-
-    // Refresh categories from storage
+  // ✅ PICKER HELPERS
+  const openCategoryPicker = async () => {
+    const name = prompt('Enter new category name');
+    if (!name) return;
+    const newCategory = { id: uuid.v4().toString(), name, subcategories: [] };
+    await addCategory(newCategory);
+    await new Promise(res => setTimeout(res, 100));
+    await reloadConfig();
+    // Re-fetch the saved category with updated ID from AsyncStorage
     const refreshed = await getCategories();
-    const matched = refreshed.find(cat => cat.id === category.id);
-    if (matched) {
-      setCategory(matched);
-      setSubCategory(
-        (matched.subcategories ?? []).find(sub => sub.id === newSub.id) || null
-      );
+    const matched = refreshed.find(cat => cat.name.toLowerCase() === name.toLowerCase());
+
+    if (!matched) {
+      console.warn('Category not found in AsyncStorage:', category?.id);
+      showToast('error', 'Category not available');
+      return;
     }
 
-    reloadConfig();
-    showToast('success', 'New sub-category added');
-  } catch (err) {
-    console.error('Failed to add sub-category', err);
-    showToast('error', 'Error adding sub-category');
-  }
-};
+
+    if (matched) {
+      setCategory(matched); // ✅ use fresh object that exists in storage
+      setSubCategory(null); // reset subcategory when category changes
+      showToast('success', 'New category added');
+    } else {
+      showToast('error', 'Failed to reload new category');
+    }
+  };
+
+  const openSubCategoryPicker = async () => {
+    if (!category) return;
+
+    const name = prompt('Enter sub-category');
+    if (!name || !name.trim()) return;
+
+    try {
+      const newSub: SubCategory = {
+        id: uuid.v4().toString(),
+        name: name.trim(),
+        categoryId: category.id,
+      };
+
+      await addSubCategory(category.id, newSub);
+
+      // Refresh categories from storage
+      const refreshed = await getCategories();
+      const matched = refreshed.find(cat => cat.id === category.id);
+      if (matched) {
+        setCategory(matched);
+        setSubCategory(
+          (matched.subcategories ?? []).find(sub => sub.id === newSub.id) || null
+        );
+      }
+
+      reloadConfig();
+      showToast('success', 'New sub-category added');
+    } catch (err) {
+      console.error('Failed to add sub-category', err);
+      showToast('error', 'Error adding sub-category');
+    }
+  };
 
 
   const handleDueDateConfirm = (selectedDate: Date) => {
@@ -171,19 +209,14 @@ const openSubCategoryPicker = async () => {
     setDueDate(selectedDate);
   };
 
-  const handleAddFromOrToPerson = () => {
-  setShowAddPersonModal(true);
-  setIsForFromOrToPerson(true); // new state to track which field is being set
-};
-
   const handleSave = async () => {
     try {
 
-          const validation = validateTransactionData({
-            type,
-            amount: parseFloat(amount),
-            date: date.toISOString().split('T')[0], // YYYY-MM-DD
-          });
+      const validation = validateTransactionData({
+        type,
+        amount: parseFloat(amount),
+        date: date.toISOString().split('T')[0], // YYYY-MM-DD
+      });
 
       if (!validation.valid) {
         showToast('error', validation.message ?? 'Something went wrong.');
@@ -195,7 +228,7 @@ const openSubCategoryPicker = async () => {
         fallbackSubCategory: finalSubCategory,
         fallbackPerson: finalPerson,
         fallbackAccount: finalAccount,
-      } = await getFallbackTransactionValues({ category, subCategory, person, account });
+      } = await getFallbackTransactionValues({ category, subCategory, selectedPerson, account });
 
       if (!finalCategory) {
         showToast('warning', 'No category selected. Using MISC.');
@@ -215,12 +248,13 @@ const openSubCategoryPicker = async () => {
         date: date.toISOString().split('T')[0],
         categoryId: category?.id ?? finalCategory?.id ?? '',
         subCategoryId: subCategory?.id ?? finalSubCategory?.id ?? '',
-        personId: person?.id ?? finalPerson?.id ?? '',
+        personId: selectedPerson?.id ?? finalPerson?.id ?? '',
         accountId: account?.id ?? finalAccount?.id ?? '',
         note,
         isReversible,
+        isOptional,
         dueDate:
-        isReversible && dueDate ? dueDate.toISOString().split('T')[0] : undefined,
+          isReversible && dueDate ? dueDate.toISOString().split('T')[0] : undefined,
         fromOrToPersonName: fromOrToPersonName,
         isSettled: markAsReturned,
         createdAt: new Date().toISOString(),
@@ -250,7 +284,7 @@ const openSubCategoryPicker = async () => {
     setNote('');
     setCategory(null);
     setSubCategory(null);
-    setPerson(null);
+    setSelectedPerson(null);
     setAccount(null);
     setIsReversible(false);
     setDueDate(null);
@@ -262,16 +296,9 @@ const openSubCategoryPicker = async () => {
     setShowAddSubcategoryModal(false);
   };
 
-  const handlePersonChange = (personId: string) => {
-    setSelectedPersonId(personId);
-    const selectedPerson = persons.find(p => p.id === personId);
-    setAvailableAccounts(selectedPerson?.accounts || []);
-    setSelectedAccountId(null); // reset account selection
-  };
-
   const handleReversibleToggle = () => {
-  setIsReversible(prev => !prev);
-};
+    setIsReversible(prev => !prev);
+  };
 
   const handleMarkAsReturnedToggle = () => {
     setIsSettled(prev => !prev);
@@ -285,50 +312,50 @@ const openSubCategoryPicker = async () => {
       },
       {
         text: 'Add',
-        
 
-onPress: async () => {
-  if (type === 'category') {
-    const newCat = {
-      id: uuid.v4().toString(),
-      name: value,
-      subcategories: [],
-    };
-    const savedCat = await addCategory(newCat);
-    setCategory(savedCat);
-    reloadConfig();
-    showToast('success', 'Category added');
-  } else if (type === 'subcategory' && category) {
-    const newSub = {
-      id: uuid.v4().toString(),
-      name: value,
-      categoryId: category.id,
-    };
-    const savedSub = await addSubCategory(category.id, newSub);
-    setSubCategory(savedSub);
-    reloadConfig();
-    showToast('success', 'SubCategory added');
-  } else if (type === 'person') {
-    const newPerson = {
-      id: uuid.v4().toString(),
-      name: value,
-    };
-    const savedPerson = await addPerson(newPerson);
-    setPerson(savedPerson);
-    reloadConfig();
-    showToast('success', 'Person added');
-  } else if (type === 'account') {
-    const newAcc = {
-      id: uuid.v4().toString(),
-      name: value,
-      bankName: 'Unknown',
-      personalName: 'SELF',
-    };
- 
-    reloadConfig();
-    showToast('success', 'Account added');
-  }
-}
+
+        onPress: async () => {
+          if (type === 'category') {
+            const newCat = {
+              id: uuid.v4().toString(),
+              name: value,
+              subcategories: [],
+            };
+            const savedCat = await addCategory(newCat);
+            setCategory(savedCat);
+            reloadConfig();
+            showToast('success', 'Category added');
+          } else if (type === 'subcategory' && category) {
+            const newSub = {
+              id: uuid.v4().toString(),
+              name: value,
+              categoryId: category.id,
+            };
+            const savedSub = await addSubCategory(category.id, newSub);
+            setSubCategory(savedSub);
+            reloadConfig();
+            showToast('success', 'SubCategory added');
+          } else if (type === 'person') {
+            const newPerson = {
+              id: uuid.v4().toString(),
+              name: value,
+            };
+            const savedPerson = await addPerson(newPerson);
+            setSelectedPerson(savedPerson);
+            reloadConfig();
+            showToast('success', 'Person added');
+          } else if (type === 'account') {
+            const newAcc = {
+              id: uuid.v4().toString(),
+              name: value,
+              bankName: 'Unknown',
+              personalName: 'SELF',
+            };
+
+            reloadConfig();
+            showToast('success', 'Account added');
+          }
+        }
       }
     ]);
 
@@ -336,182 +363,276 @@ onPress: async () => {
   };
 
   return (
-      <>
-    <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled">
+    <>
+      <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled">
 
-    {/* Header with logo and title and bell */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-                  <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-                  <Text style={styles.title}>Log Transaction</Text>
-                </View>
-                <View style={styles.headerRight}>
-                  <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
-                    <Ionicons name="refresh" size={22} color="#e6f0ff" />
-                  </TouchableOpacity>
-                </View>
-                {/* Add Person */}
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('MoreNavigator', { screen: 'Persons' })}>
-                  <Ionicons name="person-add-outline" size={22} color="#e6f0ff" />
-                </TouchableOpacity>
+        {/* Header with logo and title and bell */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => setModalVisible(true)}>
+              <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+            </TouchableOpacity>
+            <Text style={styles.title}>Log Transaction</Text>
+          </View>
+          <Modal visible={modalVisible} transparent={true} animationType="fade">
+            <View style={styles.modalContainer}>
+              <Pressable onPress={() => setModalVisible(false)} style={styles.modalBackground}>
+                <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
+              </Pressable>
+            </View>
+          </Modal>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
+              <Ionicons name="refresh" size={22} color="#e6f0ff" />
+            </TouchableOpacity>
+          </View>
+          {/* Add Person */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('More', { screen: 'Persons' })}>
+            <Ionicons name="person-add-outline" size={22} color="#e6f0ff" />
+          </TouchableOpacity>
 
-                {/* Add Categories */}
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('MoreNavigator', { screen: 'Categories' })}>
-                  <Ionicons name="pricetags-outline" size={22} color="#e6f0ff" />
-                </TouchableOpacity>
-          </View>                   
+          {/* Add Categories */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('More', { screen: 'Categories' })}>
+            <Ionicons name="pricetags-outline" size={22} color="#e6f0ff" />
+          </TouchableOpacity>
+        </View>
 
-    
 
-      {/* Type Toggle */}
-      <View style={commonStyles.row}>
+        {/* Type Toggle */}
+        <View style={commonStyles.row}>
+
+          <TouchableOpacity
+            style={[commonStyles.toggleBtn, type === 'income' && commonStyles.activeBtn]}
+            onPress={() => setType('income')}
+          >
+            <Text style={commonStyles.toggleText}>Income</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[commonStyles.toggleBtn, type === 'expense' && commonStyles.activeBtn]}
+            onPress={() => setType('expense')}
+          >
+            <Text style={commonStyles.toggleText}>Expense</Text>
+          </TouchableOpacity>
+
+          {type === 'expense' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
+              <Checkbox
+                status={isOptional ? 'checked' : 'unchecked'}
+                onPress={() => setIsOptional((prev) => !prev)}
+              />
+              <Text>Optional Exp</Text>
+            </View>
+          )}
+
+        </View>
+
+
+
+        {/* Amount and Date - Side by Side */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+          {/* Amount */}
+          <View style={{ flex: 1 }}>
+            <Text style={commonStyles.label}>Amount</Text>
+            <TextInput
+              style={commonStyles.input}
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="Enter amount"
+            />
+          </View>
+
+          {/* Date */}
+          <View style={{ flex: 1 }}>
+            <Text style={commonStyles.label}>Date</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={commonStyles.dateBtn}>
+              <Text>{date.toLocaleDateString()}</Text>
+            </TouchableOpacity>
+            <DateTimePickerModal
+              isVisible={showDatePicker}
+              mode="date"
+              onConfirm={handleDateConfirm}
+              onCancel={() => setShowDatePicker(false)}
+            />
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8 }}>
+          <Text style={commonStyles.label}>Notes / Smart suggestion</Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Checkbox
+              status={smartSuggestEnabled ? 'checked' : 'unchecked'}
+              onPress={() => setSmartSuggestEnabled(prev => !prev)}
+            />
+            <Text style={{ marginLeft: 4 }}>Smart Suggestion</Text>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
+          {/* Notes Input */}
+          <View style={{ flex: 1 }}>
+            <TextInput
+              style={[commonStyles.input, { paddingVertical: 4, height: 40 }]}
+              value={note}
+              onChangeText={setNote}
+              onBlur={handleNotesBlur}
+              placeholder="Enter notes (smart suggestion for category/sub)"
+            />
+          </View>
+
+        </View>
+
+        {category && (
+          <Text style={{ color: 'green', fontSize: 12 }}>
+            Suggested Category: {category.name}
+          </Text>
+        )}
+        {subCategory && (
+          <Text style={{ color: 'green', fontSize: 12 }}>
+            Suggested Subcategory: {subCategory.name}
+          </Text>
+        )}
+
+
+        {/* Category Label */}
+        <Text style={commonStyles.label}>Category</Text>
+
+        {/* Combined Display + Search Input */}
         <TouchableOpacity
-          style={[commonStyles.toggleBtn, type === 'expense' && commonStyles.activeBtn]}
-          onPress={() => setType('expense')}
+          activeOpacity={1}
+          onPress={() => {
+            setShowCategoryList(true);
+            setCategorySearch('');
+          }}
         >
-          <Text style={commonStyles.toggleText}>Expense</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[commonStyles.toggleBtn, type === 'income' && commonStyles.activeBtn]}
-          onPress={() => setType('income')}
-        >
-          <Text style={commonStyles.toggleText}>Income</Text>
-        </TouchableOpacity>
-      </View>
-
-      
-
-      {/* Amount and Date - Side by Side */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-        {/* Amount */}
-        <View style={{ flex: 1 }}>
-          <Text style={commonStyles.label}>Amount</Text>
           <TextInput
             style={commonStyles.input}
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={setAmount}
-            placeholder="Enter amount"
+            value={
+              showCategoryList ? categorySearch : category?.name || ''
+            }
+            placeholder="Select or Add Category"
+            editable={showCategoryList} // Only editable when dropdown is open
+            onChangeText={(text) => setCategorySearch(text)}
+            onBlur={() => {
+              if (!categorySearch.trim()) {
+                setShowCategoryList(false);
+              }
+            }}
           />
-        </View>
-
-        {/* Date */}
-        <View style={{ flex: 1 }}>
-          <Text style={commonStyles.label}>Date</Text>
-          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={commonStyles.dateBtn}>
-            <Text>{date.toLocaleDateString()}</Text>
-          </TouchableOpacity>
-          <DateTimePickerModal
-            isVisible={showDatePicker}
-            mode="date"
-            onConfirm={handleDateConfirm}
-            onCancel={() => setShowDatePicker(false)}
-          />
-        </View>
-      </View>
-
-      {/* Notes */}
-      <Text style={commonStyles.label}>Notes</Text>
-      <TextInput
-        style={commonStyles.input}
-        value={note}
-        onChangeText={setNote}
-        onBlur={handleNotesBlur}
-        placeholder="groceries, rent..."
-      />
-
-      {category && (
-        <Text style={{ color: 'green', fontSize: 12 }}>
-          Suggested Category: {category.name}
-        </Text>
-      )}
-      {subCategory && (
-        <Text style={{ color: 'green', fontSize: 12 }}>
-          Suggested Subcategory: {subCategory.name}
-        </Text>
-      )}
-
-      {/* Category */}
-      <Text style={commonStyles.label}>Category</Text>
-      <TouchableOpacity
-        style={commonStyles.dropdown}
-        onPress={() => setShowCategoryList(prev => !prev)}
-      >
-        <Text>{category?.name || 'Select or Add Category'}</Text>
-      </TouchableOpacity>
-
-      {showCategoryList && (
-        <View style={{ maxHeight: 150 }}>
-          <ScrollView
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={true} // 👈 shows scrollbar
-                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }} // optional border for clarity
-              >
-            {categories.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={commonStyles.dropdownItem}
-                onPress={() => {
-                  setCategory(item);
-                  setShowCategoryList(false);
-                }}
-              >
-                <Text>{item.name}</Text>
-              </TouchableOpacity>
-            ))}
-
-            {/* Add New Category Button */}
-            <TouchableOpacity
-              style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
-              onPress={() => {
-                setShowCategoryList(false); // Hide dropdown
-                setShowAddCategoryModal(true); // Show modal
-              }}
-            >
-              <Text style={{ fontWeight: 'bold' }}>+ Add New Category</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      )}
-
-
-      {/* Subcategory */}
-        <Text style={commonStyles.label}>Subcategory</Text>
-        <TouchableOpacity
-          style={commonStyles.dropdown}
-          onPress={() => setShowSubCategoryList(prev => !prev)}
-        >
-          <Text>{subCategory?.name || 'Select or Add Subcategory'}</Text>
         </TouchableOpacity>
 
+        {/* Dropdown List: Show only when user is searching */}
+        {showCategoryList && (
+          <View style={{ maxHeight: 200 }}>
+            <ScrollView
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
+            >
+              {categories
+                .filter((item) =>
+                  item.name.toLowerCase().includes(categorySearch.toLowerCase())
+                )
+                .map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={commonStyles.dropdownItem}
+                    onPress={() => {
+                      setCategory(item);
+                      setCategorySearch(item.name);
+                      setShowCategoryList(false);
+                    }}
+                  >
+                    <Text>{item.name}</Text>
+                  </TouchableOpacity>
+                ))}
+
+              {/* Add New Category */}
+              <TouchableOpacity
+                style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                onPress={() => {
+                  setShowCategoryList(false);
+                  setShowAddCategoryModal(true);
+                  setCategorySearch('');
+                }}
+              >
+                <Text style={{ fontWeight: 'bold' }}>+ Add New Category</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+
+        {/* Subcategory Label */}
+        <Text style={commonStyles.label}>Subcategory</Text>
+
+        {/* Subcategory Input (Display + Search) */}
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            if (category?.subcategories) {
+              setShowSubCategoryList(true);
+              setSubCategorySearch('');
+            }
+          }}
+        >
+          <TextInput
+            style={commonStyles.input}
+            value={
+              showSubCategoryList ? subCategorySearch : subCategory?.name || ''
+            }
+            placeholder="Select or Add Subcategory"
+            editable={showSubCategoryList} // Editable only when dropdown is open
+            onChangeText={text => {
+              setSubCategorySearch(text);
+              setShowSubCategoryList(true);
+            }}
+            onBlur={() => {
+              if (!subCategorySearch.trim()) {
+                setShowSubCategoryList(false);
+              }
+            }}
+          />
+        </TouchableOpacity>
+
+        {/* Dropdown List */}
         {showSubCategoryList && category && (
           <View style={{ maxHeight: 150 }}>
             <ScrollView
-                            nestedScrollEnabled
-                            showsVerticalScrollIndicator={true} // 👈 shows scrollbar
-                            style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }} // optional border for clarity
-                          >
-              {(category.subcategories || []).map(item => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={commonStyles.dropdownItem}
-                  onPress={() => {
-                    setSubCategory(item);
-                    setShowSubCategoryList(false);
-                  }}
-                >
-                  <Text>{item.name}</Text>
-                </TouchableOpacity>
-              ))}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
+            >
+              {(category.subcategories || [])
+                .filter(item =>
+                  item.name.toLowerCase().includes(subCategorySearch.toLowerCase())
+                )
+                .map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={commonStyles.dropdownItem}
+                    onPress={() => {
+                      setSubCategory(item);
+                      setSubCategorySearch(item.name);
+                      setShowSubCategoryList(false);
+                    }}
+                  >
+                    <Text>{item.name}</Text>
+                  </TouchableOpacity>
+                ))}
 
-              {/* Fixed Add New Subcategory Button */}
+              {/* ➕ Add New Subcategory */}
               <TouchableOpacity
-              disabled={!category?.subcategories}
+                disabled={!category?.subcategories}
                 style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
                 onPress={() => {
                   setShowAddSubcategoryModal(true);
+                  setShowSubCategoryList(false);
+                  setSubCategorySearch('');
                 }}
               >
                 <Text style={{ fontWeight: 'bold' }}>+ Add New Subcategory</Text>
@@ -521,286 +642,456 @@ onPress: async () => {
         )}
 
 
-         {/* Person 2 */}
-        <Text style={styles.label}>Person</Text>
-              <Picker
-                selectedValue={selectedPersonId}
-                onValueChange={(itemValue) => handlePersonChange(itemValue ?? '')}
-              >
-                <Picker.Item label="Select Person" value={null} />
-                {persons.map(person => (
-                  <Picker.Item key={person.id} label={person.name} value={person.id} />
-                ))}
-              </Picker>
+        {/* Person */}
+        <Text style={commonStyles.label}>Person Or Paid By</Text>
 
-              {availableAccounts.length > 0 && (
-                <>
-                  <Text style={styles.label}>Account</Text>
-                  <Picker
-                    selectedValue={selectedAccountId}
-                    onValueChange={(itemValue) => setSelectedAccountId(itemValue)}
-                  >
-                    <Picker.Item label="Select Account" value={null} />
-                    {availableAccounts.map(acc => (
-                      <Picker.Item
-                        key={acc.id}
-                        label={acc.accountTypeOrName}
-                        value={acc.id}
-                      />
-                    ))}
-                  </Picker>
-                </>
-              )}
-
-      {/* Reversible Transaction Toggle */}
-      <View style={commonStyles.checkboxRow}>
-        <Checkbox
-          status={isReversible ? 'checked' : 'unchecked'}
-          onPress={handleReversibleToggle}
-        />
-        <Text style={commonStyles.label}>Track for Return</Text>
-      </View>
-
-      {isReversible && (
-        <>
-          {/* Due Date */}
-          <Text style={commonStyles.label}>Due Date</Text>
-          <TouchableOpacity onPress={() => setShowDueDatePicker(true)} style={commonStyles.dateBtn}>
-            <Text>{dueDate ? new Date(dueDate).toLocaleDateString() : 'Pick a due date'}</Text>
-          </TouchableOpacity>
-          <DateTimePickerModal
-            isVisible={showDueDatePicker}
-            mode="date"
-            onConfirm={handleDueDateConfirm}
-            onCancel={() => setShowDueDatePicker(false)}
-          />
-
-          {/* From/To Person */}
-          <Text style={commonStyles.label}>From / To Person</Text>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            setShowPersonList(true);
+            setPersonSearch('');
+          }}
+        >
           <TextInput
-            value={fromOrToPersonName}
-            onChangeText={setFromOrToPersonName}
-            placeholder="Enter name involved (optional)"
-            style={styles.input}
+            style={commonStyles.input}
+            value={
+              showPersonList ? personSearch : selectedPerson?.name || ''
+            }
+            placeholder="Select or Add Person"
+            editable={showPersonList}
+            onChangeText={(text) => {
+              setPersonSearch(text);
+              setShowPersonList(true);
+            }}
+            onBlur={() => {
+              if (!personSearch.trim()) {
+                setShowPersonList(false);
+              }
+            }}
           />
+        </TouchableOpacity>
 
-        
-          {/* Mark as Returned */}
-          <View style={commonStyles.checkboxRow}>
-            <Checkbox
+        {showPersonList && (
+          <View style={{ maxHeight: 200 }}>
+            <ScrollView
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
+            >
+              {persons
+                .filter(person =>
+                  person.name.toLowerCase().includes(personSearch.toLowerCase())
+                )
+                .map(person => (
+                  <TouchableOpacity
+                    key={person.id}
+                    style={commonStyles.dropdownItem}
+                    onPress={() => {
+                      setSelectedPerson(person);
+                      setPersonSearch(person.name);
+                      setShowPersonList(false);
+                    }}
+                  >
+                    <Text>{person.name}</Text>
+                  </TouchableOpacity>
+                ))}
+
+              {/* ➕ Add New Person */}
+              <TouchableOpacity
+                style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                onPress={() => {
+                  setShowAddPersonModal(true);
+                  setShowPersonList(false);
+                  setPersonSearch('');
+                }}
+              >
+                <Text style={{ fontWeight: 'bold' }}>+ Add New Person</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Account Label */}
+        <Text style={commonStyles.label}>Account Or Paid From</Text>
+
+        {/* Account Input (Display + Search) */}
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+            if (selectedPerson?.accounts) {
+              setShowAccountList(true);
+              setAccountSearch('');
+            }
+          }}
+        >
+          <TextInput
+            style={commonStyles.input}
+            value={
+              showAccountList ? accountSearch : selectedAccount?.paymentMode || ''
+            }
+            placeholder="Select or Add Account"
+            editable={showAccountList}
+            onChangeText={text => {
+              setAccountSearch(text);
+              setShowAccountList(true);
+            }}
+            onBlur={() => {
+              if (!accountSearch.trim()) {
+                setShowAccountList(false);
+              }
+            }}
+          />
+        </TouchableOpacity>
+
+        {/* Dropdown List */}
+        {showAccountList && selectedPerson?.accounts && (
+          <View style={{ maxHeight: 150 }}>
+            <ScrollView
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
+            >
+              {selectedPerson.accounts
+                .filter(acc =>
+                  acc.paymentMode.toLowerCase().includes(accountSearch.toLowerCase())
+                )
+                .map(acc => (
+                  <TouchableOpacity
+                    key={acc.id}
+                    style={commonStyles.dropdownItem}
+                    onPress={() => {
+                      setSelectedAccount(acc);
+                      setAccountSearch(acc.paymentMode);
+                      setShowAccountList(false);
+                    }}
+                  >
+                    <Text>{acc.paymentMode}</Text>
+                  </TouchableOpacity>
+                ))}
+
+              {/* ➕ Add New Account */}
+              <TouchableOpacity
+                style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                onPress={() => {
+                  setShowAddAccountModal(true);
+                  setShowAccountList(false);
+                  setAccountSearch('');
+                }}
+              >
+                <Text style={{ fontWeight: 'bold' }}>+ Add New Account</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Reversible Transaction Toggle */}
+        <View style={commonStyles.checkboxRow}>
+          <Checkbox
+            status={isReversible ? 'checked' : 'unchecked'}
+            onPress={handleReversibleToggle}
+          />
+          <Text style={commonStyles.label}>Track for Return</Text>
+        </View>
+
+        {isReversible && (
+          <>
+            {/* Due Date */}
+            <Text style={commonStyles.label}>Due Date</Text>
+            <TouchableOpacity onPress={() => setShowDueDatePicker(true)} style={commonStyles.dateBtn}>
+              <Text>{dueDate ? new Date(dueDate).toLocaleDateString() : 'Pick a due date'}</Text>
+            </TouchableOpacity>
+            <DateTimePickerModal
+              isVisible={showDueDatePicker}
+              mode="date"
+              onConfirm={handleDueDateConfirm}
+              onCancel={() => setShowDueDatePicker(false)}
+            />
+
+            {/* From/To Person */}
+            <Text style={commonStyles.label}>From / To Person</Text>
+            <TextInput
+              value={fromOrToPersonName}
+              onChangeText={setFromOrToPersonName}
+              placeholder="Enter name involved (optional)"
+              style={styles.input}
+            />
+
+
+            {/* Mark as Returned */}
+            <View style={commonStyles.checkboxRow}>
+              <Checkbox
                 status={isSettled ? 'checked' : 'unchecked'}
                 onPress={handleMarkAsReturnedToggle}
               />
-            <Text style={commonStyles.label}>Mark as Returned</Text>
-          </View>
-        </>
-      )}
+              <Text style={commonStyles.label}>Mark as Returned</Text>
+            </View>
+          </>
+        )}
 
-      {/* Action Buttons Row */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
-        {/* Save Button */}
-        <TouchableOpacity onPress={handleSave} style={[commonStyles.saveBtn, { flex: 1, marginRight: 8 }]}>
-          <Text style={commonStyles.saveBtnText}>Log Transaction</Text>
-        </TouchableOpacity>
+        {/* Action Buttons Row */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+          {/* Cancel Button */}
+          <TouchableOpacity
+            onPress={resetForm}
+            style={[commonStyles.saveBtn, { backgroundColor: '#ccc', flex: 1, marginRight: 8 }]}
+          >
+            <Text style={[commonStyles.saveBtnText, { color: '#000' }]}>Cancel</Text>
+          </TouchableOpacity>
 
-        {/* Cancel Button */}
-        <TouchableOpacity
-          onPress={resetForm}
-          style={[commonStyles.saveBtn, { backgroundColor: '#ccc', flex: 1, marginLeft: 8 }]}
-        >
-          <Text style={[commonStyles.saveBtnText, { color: '#000' }]}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Save Button */}
+          <TouchableOpacity
+            onPress={handleSave}
+            style={[commonStyles.saveBtn, { flex: 1, marginLeft: 8 }]}
+          >
+            <Text style={commonStyles.saveBtnText}>Log Transaction</Text>
+          </TouchableOpacity>
+        </View>
 
-    </ScrollView>
+      </ScrollView>
 
-    <Modal visible={showAddCategoryModal} transparent animationType="slide">
-      <View style={commonStyles.modalContainer}>
-        <View style={commonStyles.modalContent}>
-          <Text style={commonStyles.label}>Enter Category Name</Text>
-          <TextInput
-            style={commonStyles.input}
-            value={newCategoryName}
-            onChangeText={setNewCategoryName}
-            placeholder="e.g., Food, Travel"
-          />
-          <View style={commonStyles.modalButtonRow}>
-            <Button
-              title="Cancel"
-              onPress={() => {
-                setNewCategoryName('');
-                setShowAddCategoryModal(false);
-              }}
+      <Modal visible={showAddCategoryModal} transparent animationType="slide">
+        <View style={commonStyles.modalContainer}>
+          <View style={commonStyles.modalContent}>
+            <Text style={commonStyles.label}>Enter Category Name</Text>
+            <TextInput
+              style={commonStyles.input}
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              placeholder="e.g., Food, Travel"
             />
-            <Button
-              title="Add"
-              onPress={async () => {
-                const name = newCategoryName.trim();
+            <View style={commonStyles.modalButtonRow}>
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setNewCategoryName('');
+                  setShowAddCategoryModal(false);
+                }}
+              />
+              <Button
+                title="Add"
+                onPress={async () => {
+                  const name = newCategoryName.trim();
+
+                  if (!name) {
+                    showToast('error', 'Category name cannot be empty');
+                    return;
+                  }
+
+                  try {
+                    const newCat: Category = {
+                      id: uuid.v4().toString(),
+                      name,
+                      subcategories: [],
+                    };
+
+                    await addCategory(newCat);
+
+                    // Fetch updated categories after save
+                    const updated = await getCategories();
+                    const updatedCat = updated.find(c => c.id === newCat.id);
+
+                    if (updatedCat) {
+                      setCategory(updatedCat);
+                      setSubCategory(null); // ✅ clear previous subcategory
+                    }
+                    reloadConfig();
+                    setNewCategoryName('');
+                    setShowAddCategoryModal(false);
+                    showToast('success', 'New category added');
+                  } catch (error) {
+                    console.error('Error adding category:', error);
+                    showToast('error', 'Failed to add category');
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showAddPersonModal} transparent animationType="slide">
+        <View style={commonStyles.modalContainer}>
+          <View style={commonStyles.modalContent}>
+            <Text style={commonStyles.label}>Enter Person Name</Text>
+            <TextInput
+              style={commonStyles.input}
+              value={newPersonName}
+              onChangeText={setNewPersonName}
+              placeholder="e.g., John, Mom"
+            />
+            <View style={commonStyles.modalButtonRow}>
+              <Button title="Cancel" onPress={() => {
+                setNewPersonName('');
+                setShowAddPersonModal(false);
+              }} />
+              <Button title="Add" onPress={async () => {
+                const name = newPersonName.trim();
 
                 if (!name) {
-                  showToast('error', 'Category name cannot be empty');
+                  showToast('error', 'Person name cannot be empty');
                   return;
                 }
 
-                try {
-                  const newCat: Category = {
-                    id: uuid.v4().toString(),
-                    name,
-                    subcategories: [],
-                  };
+                const newPerson: Person = {
+                  id: uuid.v4().toString(),
+                  name,
+                  accounts: [], // Add this to satisfy the required field
+                };
 
-                  await addCategory(newCat);
-
-                  // Fetch updated categories after save
-                  const updated = await getCategories();
-                  const updatedCat = updated.find(c => c.id === newCat.id);
-
-                  if (updatedCat) {
-                     setCategory(updatedCat);
-                     setSubCategory(null); // ✅ clear previous subcategory
-                  }
-                  reloadConfig();
-                  setNewCategoryName('');
-                  setShowAddCategoryModal(false);
-                  showToast('success', 'New category added');
-                } catch (error) {
-                  console.error('Error adding category:', error);
-                  showToast('error', 'Failed to add category');
-                }
-              }}
-            />
-          </View>
-        </View>
-      </View>
-    </Modal>
-
-    <Modal visible={showAddPersonModal} transparent animationType="slide">
-      <View style={commonStyles.modalContainer}>
-        <View style={commonStyles.modalContent}>
-          <Text style={commonStyles.label}>Enter Person Name</Text>
-          <TextInput
-            style={commonStyles.input}
-            value={newPersonName}
-            onChangeText={setNewPersonName}
-            placeholder="e.g., John, Mom"
-          />
-          <View style={commonStyles.modalButtonRow}>
-            <Button title="Cancel" onPress={() => {
-              setNewPersonName('');
-              setShowAddPersonModal(false);
-            }} />
-            <Button title="Add" onPress={async () => {
-              const name = newPersonName.trim();
-
-              if (!name) {
-                showToast('error', 'Person name cannot be empty');
-                return;
-              }
-
-              const newPerson: Person = {
-                id: uuid.v4().toString(),
-                name,
-                accounts: [], // Add this to satisfy the required field
-              };
-
-              await addPerson(newPerson);
-              reloadConfig(); // reloads latest config including persons
-              setPerson(newPerson); // select newly added person
-              setNewPersonName('');
-              setShowAddPersonModal(false);
-              showToast('success', 'New person added');
-            }} />
-          </View>
-        </View>
-      </View>
-    </Modal>
-
-    <Modal visible={showAddSubcategoryModal} transparent animationType="slide">
-          <View style={commonStyles.modalContainer}>
-            <View style={commonStyles.modalContent}>
-              <Text style={commonStyles.label}>Enter Subcategory Name</Text>
-              <TextInput
-                style={commonStyles.input}
-                value={newSubcategoryName}
-                onChangeText={setNewSubcategoryName}
-                placeholder="e.g., Fancy, Vegetables"
-              />
-              <View style={commonStyles.modalButtonRow}>
-                <Button title="Cancel" onPress={() => {
-                  setNewSubcategoryName('');
-                  setShowAddSubcategoryModal(false);
-                }} />
-                <Button
-                  title="Add"
-                  onPress={async () => {
-                    const name = newSubcategoryName.trim();
-
-                    if (!name) {
-                      showToast('error', 'Subcategory name cannot be empty');
-                      return;
-                    }
-
-                    if (!category) {
-                      showToast('error', 'Please select a category first');
-                      return;
-                    }
-
-                    try {
-                      const allCategories = await getCategories(); // ✅ freshly read
-
-                      const targetCategory = allCategories.find(cat => cat.id === category.id);
-
-                      if (!targetCategory) {
-                        console.warn('Category not found in AsyncStorage:', category.id);
-                        showToast('error', 'Category not found in saved list');
-                        return;
-                      }
-
-                      // Ensure subcategories array
-                      if (!targetCategory.subcategories) targetCategory.subcategories = [];
-
-                      // Create new subcategory
-                      const newSub: SubCategory = {
-                        id: uuid.v4().toString(),
-                        name,
-                        categoryId: targetCategory.id,
-                      };
-
-                      // Add to category
-                      targetCategory.subcategories.push(newSub);
-
-                      // Save updated list
-                      await AsyncStorage.setItem('categories', JSON.stringify(allCategories));
-
-                      // 🔁 Refresh config and update local category state
-                      await reloadConfig();
-
-                      const refreshed = await getCategories();
-                      const matched = refreshed.find(cat => cat.id === category.id);
-                      if (matched) {
-                        setCategory(matched);
-                        setSubCategory(
-                          matched.subcategories?.find(sub => sub.id === newSub.id) || null
-                        );
-                      }
-
-                      // Reset modal
-                      setNewSubcategoryName('');
-                      setShowAddSubcategoryModal(false);
-                      showToast('success', 'New subcategory added');
-                    } catch (error) {
-                      console.error('Error adding subcategory:', error);
-                      showToast('error', 'Failed to add subcategory');
-                    }
-                  }}
-                />
-              </View>
+                await addPerson(newPerson);
+                reloadConfig(); // reloads latest config including persons
+                setSelectedPerson(newPerson); // select newly added person
+                setNewPersonName('');
+                setShowAddPersonModal(false);
+                showToast('success', 'New person added');
+              }} />
             </View>
           </View>
-        </Modal>
-        </>
+        </View>
+      </Modal>
+
+      <Modal visible={showAddSubcategoryModal} transparent animationType="slide">
+        <View style={commonStyles.modalContainer}>
+          <View style={commonStyles.modalContent}>
+            <Text style={commonStyles.label}>Enter Subcategory Name</Text>
+            <TextInput
+              style={commonStyles.input}
+              value={newSubcategoryName}
+              onChangeText={setNewSubcategoryName}
+              placeholder="e.g., Fancy, Vegetables"
+            />
+            <View style={commonStyles.modalButtonRow}>
+              <Button title="Cancel" onPress={() => {
+                setNewSubcategoryName('');
+                setShowAddSubcategoryModal(false);
+              }} />
+              <Button
+                title="Add"
+                onPress={async () => {
+                  const name = newSubcategoryName.trim();
+
+                  if (!name) {
+                    showToast('error', 'Subcategory name cannot be empty');
+                    return;
+                  }
+
+                  if (!category) {
+                    showToast('error', 'Please select a category first');
+                    return;
+                  }
+
+                  try {
+                    const allCategories = await getCategories(); // ✅ freshly read
+
+                    const targetCategory = allCategories.find(cat => cat.id === category.id);
+
+                    if (!targetCategory) {
+                      console.warn('Category not found in AsyncStorage:', category.id);
+                      showToast('error', 'Category not found in saved list');
+                      return;
+                    }
+
+                    // Ensure subcategories array
+                    if (!targetCategory.subcategories) targetCategory.subcategories = [];
+
+                    // Create new subcategory
+                    const newSub: SubCategory = {
+                      id: uuid.v4().toString(),
+                      name,
+                      categoryId: targetCategory.id,
+                    };
+
+                    // Add to category
+                    targetCategory.subcategories.push(newSub);
+
+                    // Save updated list
+                    saveCategories(allCategories);
+
+                    // 🔁 Refresh config and update local category state
+                    await reloadConfig();
+
+                    const refreshed = await getCategories();
+                    const matched = refreshed.find(cat => cat.id === category.id);
+                    if (matched) {
+                      setCategory(matched);
+                      setSubCategory(
+                        matched.subcategories?.find(sub => sub.id === newSub.id) || null
+                      );
+                    }
+
+                    // Reset modal
+                    setNewSubcategoryName('');
+                    setShowAddSubcategoryModal(false);
+                    showToast('success', 'New subcategory added');
+                  } catch (error) {
+                    console.error('Error adding subcategory:', error);
+                    showToast('error', 'Failed to add subcategory');
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showAddAccountModal} transparent animationType="slide">
+        <View style={commonStyles.modalContainer}>
+          <View style={commonStyles.modalContent}>
+            <Text style={commonStyles.label}>Enter Account Name</Text>
+            <TextInput
+              style={commonStyles.input}
+              value={newAccountName}
+              onChangeText={setNewAccountName}
+              placeholder="e.g., Bank, UPI, Cash"
+            />
+            <View style={commonStyles.modalButtonRow}>
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setNewAccountName('');
+                  setShowAddAccountModal(false);
+                }}
+              />
+              <Button
+                title="Add"
+                onPress={async () => {
+                  const name = newAccountName.trim();
+
+                  if (!name) {
+                    showToast('error', 'Account name cannot be empty');
+                    return;
+                  }
+
+                  if (!selectedPerson?.id) {
+                    showToast('error', 'No person selected');
+                    return;
+                  }
+
+                  try {
+                    const addedAccount = await addAccountToPerson(selectedPerson.id, {
+                      paymentMode: name,
+                    });
+
+                    // Refresh local person list or config (optional)
+                    reloadConfig(); // If this refreshes selectedPerson + accounts
+
+                    setSelectedAccount(addedAccount);
+                    setNewAccountName('');
+                    setShowAddAccountModal(false);
+                    showToast('success', 'New account added');
+                  } catch (error) {
+                    console.error('Add account error:', error);
+                    showToast('error', 'Failed to add account');
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   )
-  };
+};
 
 
 
@@ -819,50 +1110,50 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     color: '#222',
   },
-   header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#0984e3',
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  marginBottom: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 6, // For Android
-  // Optional: Use gradient background with expo-linear-gradient
-},
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10, // Optional for spacing (or use marginRight)
-},
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10, // Optional for spacing (or use marginRight)
+  },
 
-logo: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-  marginRight: 8,
-},
+  logo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginRight: 8,
+  },
 
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
-},
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
 
-iconButton: {
-  marginLeft: 12,
-},
+  iconButton: {
+    marginLeft: 12,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -955,6 +1246,28 @@ iconButton: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '90%',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 8,
   },
 });
 

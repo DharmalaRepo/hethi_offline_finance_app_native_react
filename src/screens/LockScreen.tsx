@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, KeyboardAvoidingView, Image } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { getAppSettings, getPin, clearPinAttempts, getPinFailedAttempts, getPinLockUntil, setPinFailedAttempts, setPinLockUntil, validatePin} from '../services/mockDataService';
+import { getAppSettings, getPin, clearPinAttempts, getPinFailedAttempts, getPinLockUntil, setPinFailedAttempts, setPinLockUntil, validatePin } from '../services/mockDataService';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { navigationRef } from '../navigation/NavigationService';
 import { showToast } from '../utils/toastUtils'; // ✅ Correct usage for named export
@@ -17,7 +17,7 @@ import {
 import type { RootStackParamList, MoreStackParamList } from '../navigation/routes';
 
 const LockScreen = () => {
-  
+
   const [enteredPin, setEnteredPin] = useState('');
   const [settings, setSettings] = useState<any>({});
   const [storedPin, setStoredPin] = useState('');
@@ -42,7 +42,6 @@ const LockScreen = () => {
 
     if (lockUntil && now < lockUntil) {
       const secondsLeft = Math.ceil((lockUntil - now) / 1000);
-      console.log(`App is locked until ${new Date(lockUntil).toLocaleTimeString()}`);
       console.log(`Seconds left: ${secondsLeft}`);
       showToast('error', `App is temporarily locked. Try again in ${secondsLeft} seconds.`);
       ToastAndroid.show(`App is temporarily locked. Try again in ${secondsLeft} seconds.`, ToastAndroid.SHORT);
@@ -102,7 +101,8 @@ const LockScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.select({ ios: 'padding' })}>
+      <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
       <Text style={styles.title}>🔒 Enter PIN to Unlock</Text>
 
       <TextInput
@@ -118,52 +118,115 @@ const LockScreen = () => {
       <TouchableOpacity style={styles.button} onPress={handleUnlock}>
         <Text style={styles.buttonText}>Unlock</Text>
       </TouchableOpacity>
-
       {settings.biometricEnabled && (
         <TouchableOpacity style={[styles.button, styles.altButton]} onPress={handleBiometricAuth}>
           <Text style={styles.buttonText}>Use Biometric</Text>
         </TouchableOpacity>
       )}
-    </View>
+      <View style={styles.featuresContainer}>
+        <Text style={styles.featuresTitle}>✨ App Highlights</Text>
+        <View style={styles.featureItem}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.featureText}>Offline-first Expense & Income Tracking</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.featureText}>No ads. No data tracking. 100% private.</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.featureText}>Category and Person-wise transaction grouping</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.featureText}>Smart Dashboards with monthly summaries</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.featureText}>Recurring payment reminders </Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.featureText}>Balance Sheet with Opening/Closing support</Text>
+        </View>
+
+      </View>
+
+    </KeyboardAvoidingView>
+
+
   );
 };
 
 export default LockScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#fff',
-  },
+
   title: {
     fontSize: 20,
     marginBottom: 20,
     textAlign: 'center',
     color: '#2d3436',
-  },
-  input: {
+  }, input: {
+    width: '100%',
     borderWidth: 1,
-    borderColor: '#b2bec3',
-    padding: 12,
-    fontSize: 18,
+    borderColor: '#ccc',
     borderRadius: 8,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    marginBottom: 20,
     textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#0984e3',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
   },
   altButton: {
     backgroundColor: '#636e72',
+    marginTop: 12,
   },
-  buttonText: {
-    color: '#fff',
+  fullImage: { width: 150, height: 150, marginBottom: 25 },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#fff' },
+  button: {
+    backgroundColor: '#0984e3',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    width: '100%',
+  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  footer: { position: 'absolute', bottom: 20, alignItems: 'center' },
+  footerText: { fontSize: 12, color: '#999', textAlign: 'center' },
+  link: { color: '#007bff', textDecorationLine: 'underline' }, featuresContainer: {
+    marginTop: 40,
+    padding: 16,
+    backgroundColor: '#f1f2f6',
+    borderRadius: 10,
+    width: '100%',
+  },
+  featuresTitle: {
+    fontWeight: '700',
     fontSize: 16,
+    marginBottom: 10,
+    color: '#1e90ff', // slightly deeper blue
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    paddingLeft: 6,
+  },
+
+  bullet: {
+    fontSize: 16,
+    marginRight: 10,
+    color: '#0abde3', // cyan-blue shade for visual highlight
+  },
+
+  featureText: {
+    fontSize: 12,
+    color: '#2d3436', // rich dark grey instead of black
+    flex: 1,
+    lineHeight: 20,
   },
 });

@@ -89,20 +89,13 @@ const RootNavigator = () => {
           © All rights reserved. <Text style={{ fontWeight: 'bold', color: 'grey' }}>HETHI SOLUTIONS.</Text>
         </Text>
         <Text style={styles.footerSubText}>
-          By Dharmala Hethi Pranavi Reddy. Email for{' '}
+          By Dharmala Shiva Prasad Reddy. Email for{' '}
           <Text
             style={styles.emailLink}
-            onPress={() => Linking.openURL('mailto:hethi.solutions.queries@gmail.com')}
+            onPress={() => Linking.openURL('mailto:hethi.solutions@gmail.com')}
           >
-            queries
+            queries/feedback
           </Text>{' '}
-          or{' '}
-          <Text
-            style={styles.emailLink}
-            onPress={() => Linking.openURL('mailto:hethi.solutions.feedback@gmail.com')}
-          >
-            feedback
-          </Text>
         </Text>
       </View>
     </SafeAreaView>

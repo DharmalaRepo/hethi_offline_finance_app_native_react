@@ -5,19 +5,19 @@ import { Account } from '../models/Account';
 import { Transaction } from '../models/Transaction';
 import { AppSettings } from '../models/AppSettings';
 import { RecurringPayment } from '../models/RecurringPayment';
-import  * as transactionUtils  from '../utils/transactionUtils';
+import * as transactionUtils from '../utils/transactionUtils';
 import uuid from 'react-native-uuid';
 import { normalizeText } from '../utils/textUtils';
 import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
-import { saveSecureItemInJson, removeSecureItem, getSecureItemInJsonFormat, setSecureItem } from './secureStorageService';
+import { saveSecureItemInJson, removeSecureItem, getSecureItemInJsonFormat } from './secureStorageService';
 
 
 const CATEGORY_KEY = 'categories';
 const PERSON_KEY = 'persons';
 const ACCOUNT_KEY = 'accounts';
 const TRANSACTION_KEY = 'transactions';
-const RECURRINGPAYEMENTS_KEY= 'recurringPayments';
+const RECURRINGPAYEMENTS_KEY = 'recurringPayments';
 const OPENING_BALANCES_KEY = 'monthly_opening_balances';
 const CLOSING_BALANCES_KEY = 'monthly_closing_balances';
 const PIN_KEY = 'user_pin';
@@ -26,6 +26,18 @@ const SECURITY_ANSWER_KEY = 'security_answer';
 const APP_SETTINGS_KEY = 'APP_SETTINGS';
 const PIN_ATTEMPT_KEY = 'pin_failed_attempts';
 const PIN_LOCK_UNTIL_KEY = 'pin_lock_until';
+const TOGGLE_KEY = 'SHOW_SENSITIVE_DATA';
+
+// Get toggle state (default 'false')
+export const getToggleKey = async (): Promise<string> => {
+  const raw = await getSecureItemInJsonFormat(TOGGLE_KEY);
+  return raw ?? 'false';
+};
+
+// Save toggle state
+export const saveToggleKey = async (value: string): Promise<void> => {
+  await saveSecureItemInJson(TOGGLE_KEY, value);
+};
 
 //Categories
 
@@ -140,9 +152,28 @@ export const addSubCategory = async (
 };
 
 // 1. Save Categories
-export const saveCategories = async (categories: Category[]) => {
+export const saveCategories = async (newCategories: Category[]) => {
   try {
-    await setSecureItem(CATEGORY_KEY, JSON.stringify(categories));
+    await saveSecureItemInJson(CATEGORY_KEY, newCategories);
+  } catch (error) {
+    console.error('[saveCategories] Error:', error);
+  }
+};
+
+export const addCategories = async (newCategories: Category[]) => {
+  try {
+    const existing: Category[] = (await getSecureItemInJsonFormat(CATEGORY_KEY)) || [];
+
+    // Optionally prevent duplicates based on category ID
+    const combined = [...existing];
+
+    newCategories.forEach((newCat) => {
+      if (!combined.find((cat) => cat.id === newCat.id)) {
+        combined.push(newCat);
+      }
+    });
+
+    await saveSecureItemInJson(CATEGORY_KEY, combined);
   } catch (error) {
     console.error('[saveCategories] Error:', error);
   }
@@ -165,7 +196,6 @@ export const getAllPersons = async (): Promise<Person[]> => {
 export const getPersons = async (): Promise<Person[]> => {
   try {
     const data = await getSecureItemInJsonFormat<Person[]>(PERSON_KEY);
-
     return data || [];
   } catch (error) {
     console.error('[getPersons1] Failed to fetch persons:', error);
@@ -173,13 +203,37 @@ export const getPersons = async (): Promise<Person[]> => {
   }
 };
 
-export const getAccounts = async (): Promise<Account[]> => {
+
+export const savePersons = async (newPersons: Person[]) => {
   try {
-    const data = await getSecureItemInJsonFormat<Account[]>(ACCOUNT_KEY);
-    return data || [];
+    await saveSecureItemInJson(PERSON_KEY, newPersons);
   } catch (error) {
-    console.error('[getAccounts] Failed to fetch accounts:', error);
-    return [];
+    console.error('[savePersons] Failed to save persons:', error);
+    throw error;
+  }
+};
+
+export const addPersons = async (newPersons: Person[]) => {
+  try {
+    const existing: Person[] = (await getSecureItemInJsonFormat(PERSON_KEY)) || [];
+
+    const combinedMap = new Map<string, Person>();
+
+    // Add existing persons
+    existing.forEach((p) => {
+      if (p.id) combinedMap.set(p.id, p);
+    });
+
+    // Add or overwrite with new persons
+    newPersons.forEach((p) => {
+      if (p.id) combinedMap.set(p.id, p);
+    });
+
+    const finalList = Array.from(combinedMap.values());
+    await saveSecureItemInJson(PERSON_KEY, finalList);
+  } catch (error) {
+    console.error('[savePersons] Failed to save persons:', error);
+    throw error;
   }
 };
 
@@ -194,7 +248,7 @@ export const addPerson = async (input: { name: string }): Promise<Person> => {
     };
 
     const updatedPersons = [...persons, newPerson];
-    await saveToStorageSecured(PERSON_KEY, updatedPersons);
+    await saveSecureItemInJson(PERSON_KEY, updatedPersons);
     return newPerson;
   } catch (error) {
     console.error('[addPerson] Failed to add person:', error);
@@ -202,54 +256,43 @@ export const addPerson = async (input: { name: string }): Promise<Person> => {
   }
 };
 
- // 2. Save Persons
-export const savePersons = async (persons: Person[]) => {
+export const getAccounts = async (): Promise<Account[]> => {
   try {
-    await setSecureItem(PERSON_KEY, JSON.stringify(persons));
+    const data = await getSecureItemInJsonFormat<Account[]>(ACCOUNT_KEY);
+    return data || [];
   } catch (error) {
-    console.error('[savePersons] Error:', error);
+    console.error('[getAccounts] Failed to fetch accounts:', error);
+    return [];
   }
 };
 
 
-
 export const addAccountToPerson = async (
   personId: string,
-  accountInput: { accountTypeOrName: string }
+  accountData: Partial<Account>
 ): Promise<Account> => {
-  try {
-    const persons: Person[] = await getSecureItemInJsonFormat<Person[]>(PERSON_KEY) || [];
+  const persons: Person[] = (await getSecureItemInJsonFormat(PERSON_KEY)) ?? [];
 
-    const personIndex = persons.findIndex(p => p.id === personId);
-    if (personIndex === -1) {
-      throw new Error('Person not found');
-    }
+  const personIndex = persons.findIndex(p => p.id === personId);
+  if (personIndex === -1) throw new Error('Person not found');
 
-    const person = persons[personIndex];
-    person.accounts = person.accounts || [];
+  const newAccount: Account = {
+    id: uuid.v4().toString(),
+    personId: personId,
+    paymentMode: accountData.paymentMode?.trim() || '',
+    notes: accountData.notes?.trim() || '',
+  };
 
-    const normalized = accountInput.accountTypeOrName.trim().toLowerCase();
-    const existing = person.accounts.find(
-      acc => acc.accountTypeOrName.trim().toLowerCase() === normalized
-    );
-
-    if (existing) return existing;
-
-    const newAccount: Account = {
-      id: uuid.v4().toString(),
-      personId: personId,
-      accountTypeOrName: accountInput.accountTypeOrName,
-    };
-
-    person.accounts.push(newAccount);
-    persons[personIndex] = person;
-
-    await saveSecureItemInJson(PERSON_KEY, persons);
-    return newAccount;
-  } catch (error) {
-    console.error('[addAccountToPerson] Failed:', error);
-    throw error;
+  // Ensure accounts array exists
+  if (!persons[personIndex].accounts) {
+    persons[personIndex].accounts = [];
   }
+
+  persons[personIndex].accounts.push(newAccount);
+
+  await saveSecureItemInJson(PERSON_KEY, persons);
+
+  return newAccount;
 };
 
 
@@ -287,17 +330,39 @@ export const saveTransaction = async (tx: Transaction): Promise<void> => {
   try {
     const existing = await getAllTransactions();
     const updated = [...existing, tx];
-    await saveToStorageSecured(TRANSACTION_KEY, updated);
+    await saveSecureItemInJson(TRANSACTION_KEY, updated);
   } catch (err) {
     console.error('[saveTransaction] Storage Error:', err);
     throw err;
   }
 };
 
- // 3. Save Transactions
-export const saveTransactions = async (transactions: Transaction[]) => {
+export const saveTransactions = async (newTransactions: Transaction[]) => {
   try {
-    await setSecureItem(TRANSACTION_KEY, JSON.stringify(transactions));
+    await saveSecureItemInJson(TRANSACTION_KEY, newTransactions);
+  } catch (error) {
+    console.error('[saveTransactions] Error:', error);
+  }
+};
+
+export const addTransactions = async (newTransactions: Transaction[]) => {
+  try {
+    const existing: Transaction[] = (await getSecureItemInJsonFormat(TRANSACTION_KEY)) || [];
+
+    const combinedMap = new Map<string, Transaction>();
+
+    // Add existing transactions
+    existing.forEach((t) => {
+      if (t.id) combinedMap.set(t.id, t);
+    });
+
+    // Add or overwrite with new transactions
+    newTransactions.forEach((t) => {
+      if (t.id) combinedMap.set(t.id, t);
+    });
+
+    const finalList = Array.from(combinedMap.values());
+    await saveSecureItemInJson(TRANSACTION_KEY, finalList);
   } catch (error) {
     console.error('[saveTransactions] Error:', error);
   }
@@ -313,7 +378,7 @@ export const updateTransaction = async (updated: Transaction): Promise<void> => 
       tx.id === updated.id ? { ...tx, ...updated } : tx
     );
 
-    await saveToStorageSecured(TRANSACTION_KEY, updatedList);
+    await saveSecureItemInJson(TRANSACTION_KEY, updatedList);
   } catch (error) {
     console.error('[updateTransaction] Failed to update transaction:', error);
     throw error;
@@ -327,7 +392,7 @@ export const deleteTransaction = async (id: string): Promise<void> => {
 
     const newList = existing.filter(tx => tx.id !== id);
 
-    await saveToStorageSecured(TRANSACTION_KEY, newList);
+    await saveSecureItemInJson(TRANSACTION_KEY, newList);
   } catch (error) {
     console.error('[deleteTransaction] Failed to delete transaction:', error);
     throw error;
@@ -347,10 +412,34 @@ export const getAllRecurringPayments = async (): Promise<RecurringPayment[]> => 
   }
 };
 
-  // 4. Save Recurring Payments
-export const saveRecurringPayments = async (recurringPayments: RecurringPayment[]) => {
+// 4. Save Recurring Payments
+
+export const saveRecurringPayments = async (newRecurringPayments: RecurringPayment[]) => {
   try {
-    await setSecureItem(RECURRINGPAYEMENTS_KEY, JSON.stringify(recurringPayments));
+    await saveSecureItemInJson(RECURRINGPAYEMENTS_KEY, newRecurringPayments);
+  } catch (error) {
+    console.error('[saveRecurringPayments] Error:', error);
+  }
+};
+
+export const addRecurringPayments = async (newRecurringPayments: RecurringPayment[]) => {
+  try {
+    const existing: RecurringPayment[] = (await getSecureItemInJsonFormat(RECURRINGPAYEMENTS_KEY)) || [];
+
+    const combinedMap = new Map<string, RecurringPayment>();
+
+    // Add existing recurring payments
+    existing.forEach((item) => {
+      if (item.id) combinedMap.set(item.id, item);
+    });
+
+    // Add or overwrite with new entries
+    newRecurringPayments.forEach((item) => {
+      if (item.id) combinedMap.set(item.id, item);
+    });
+
+    const finalList = Array.from(combinedMap.values());
+    await saveSecureItemInJson(RECURRINGPAYEMENTS_KEY, finalList);
   } catch (error) {
     console.error('[saveRecurringPayments] Error:', error);
   }
@@ -370,9 +459,34 @@ export const getOpeningBalances = async (): Promise<MonthlyOpeningBalance[]> => 
 };
 
 // 2. Save Opening Balances
-export const saveOpeningBalances = async (balances: MonthlyOpeningBalance[]): Promise<void> => {
+export const saveOpeningBalances = async (newBalances: MonthlyOpeningBalance[]): Promise<void> => {
   try {
-    await setSecureItem(OPENING_BALANCES_KEY, JSON.stringify(balances));
+    await saveSecureItemInJson(OPENING_BALANCES_KEY, newBalances);
+  } catch (err) {
+    console.error('Error saving opening balances', err);
+  }
+};
+
+export const addOpeningBalances = async (newBalances: MonthlyOpeningBalance[]): Promise<void> => {
+  try {
+    const existing: MonthlyOpeningBalance[] = (await getSecureItemInJsonFormat(OPENING_BALANCES_KEY)) || [];
+
+    const balanceMap = new Map<string, MonthlyOpeningBalance>();
+
+    // Add existing entries
+    for (const item of existing) {
+      const key = `${item.personId}_${item.accountId}_${item.year}_${item.month}`;
+      balanceMap.set(key, item);
+    }
+
+    // Add new entries (overwrite if key exists)
+    for (const item of newBalances) {
+      const key = `${item.personId}_${item.accountId}_${item.year}_${item.month}`;
+      balanceMap.set(key, item);
+    }
+
+    const finalList = Array.from(balanceMap.values());
+    await saveSecureItemInJson(OPENING_BALANCES_KEY, finalList);
   } catch (err) {
     console.error('Error saving opening balances', err);
   }
@@ -390,9 +504,35 @@ export const getClosingBalances = async (): Promise<MonthlyClosingBalance[]> => 
 };
 
 // 4. Save Closing Balances
-export const saveClosingBalances = async (balances: MonthlyClosingBalance[]): Promise<void> => {
+export const saveClosingBalances = async (newBalances: MonthlyClosingBalance[]): Promise<void> => {
   try {
-    await setSecureItem(CLOSING_BALANCES_KEY, JSON.stringify(balances));
+
+    await saveSecureItemInJson(CLOSING_BALANCES_KEY, newBalances);
+  } catch (err) {
+    console.error('Error saving closing balances', err);
+  }
+};
+
+export const addClosingBalances = async (newBalances: MonthlyClosingBalance[]): Promise<void> => {
+  try {
+    const existing: MonthlyClosingBalance[] = (await getSecureItemInJsonFormat(CLOSING_BALANCES_KEY)) || [];
+
+    const balanceMap = new Map<string, MonthlyClosingBalance>();
+
+    // Add existing entries
+    for (const item of existing) {
+      const key = `${item.personId}_${item.accountId}_${item.year}_${item.month}`;
+      balanceMap.set(key, item);
+    }
+
+    // Add new entries (overwrite existing ones if keys match)
+    for (const item of newBalances) {
+      const key = `${item.personId}_${item.accountId}_${item.year}_${item.month}`;
+      balanceMap.set(key, item);
+    }
+
+    const finalList = Array.from(balanceMap.values());
+    await saveSecureItemInJson(CLOSING_BALANCES_KEY, finalList);
   } catch (err) {
     console.error('Error saving closing balances', err);
   }
@@ -404,7 +544,7 @@ export const importCategories = async (data: Category[]): Promise<void> => {
   try {
     const existing: Category[] = await getSecureItemInJsonFormat<Category[]>(CATEGORY_KEY) || [];
     const merged = mergeUniqueById(existing, data);
-    await saveToStorageSecured(CATEGORY_KEY, merged);
+    await saveSecureItemInJson(CATEGORY_KEY, merged);
   } catch (err) {
     console.error('❌ Error importing categories:', err);
     throw err;
@@ -415,7 +555,7 @@ export const importPersons = async (data: Person[]): Promise<void> => {
   try {
     const existing: Person[] = await getSecureItemInJsonFormat<Person[]>(PERSON_KEY) || [];
     const merged = mergeUniqueById(existing, data);
-    await saveToStorageSecured(PERSON_KEY, merged);
+    await saveSecureItemInJson(PERSON_KEY, merged);
   } catch (err) {
     console.error('❌ Error importing persons:', err);
     throw err;
@@ -426,7 +566,7 @@ export const importTransactions = async (data: Transaction[]): Promise<void> => 
   try {
     const existing: Transaction[] = await getSecureItemInJsonFormat<Transaction[]>(TRANSACTION_KEY) || [];
     const merged = mergeUniqueById(existing, data);
-    await saveToStorageSecured(TRANSACTION_KEY, merged);
+    await saveSecureItemInJson(TRANSACTION_KEY, merged);
 
   } catch (err) {
     console.error('❌ Error importing transactions:', err);
@@ -441,7 +581,7 @@ export const importRecurringPayments = async (data: RecurringPayment[]): Promise
       (await getSecureItemInJsonFormat<RecurringPayment[]>(RECURRINGPAYEMENTS_KEY)) || [];
 
     const merged = mergeUniqueById(existing, data);
-    await saveToStorageSecured(RECURRINGPAYEMENTS_KEY, merged);
+    await saveSecureItemInJson(RECURRINGPAYEMENTS_KEY, merged);
   } catch (err) {
     console.error('❌ Error importing recurring payments:', err);
     throw err;
@@ -454,7 +594,7 @@ export const importAccounts = async (data: Account[]): Promise<void> => {
       (await getSecureItemInJsonFormat<Account[]>(ACCOUNT_KEY)) || [];
 
     const merged = mergeUniqueById(existing, data);
-    await saveToStorageSecured(ACCOUNT_KEY, merged);
+    await saveSecureItemInJson(ACCOUNT_KEY, merged);
   } catch (err) {
     console.error('❌ Error importing accounts:', err);
     throw err;
@@ -468,7 +608,7 @@ export const importMonthlyOpeningBalances = async (data: MonthlyOpeningBalance[]
       (await getSecureItemInJsonFormat<MonthlyOpeningBalance[]>(OPENING_BALANCES_KEY)) || [];
 
     const merged = mergeUniqueById(existing, data);
-    await saveToStorageSecured(OPENING_BALANCES_KEY, merged);
+    await saveSecureItemInJson(OPENING_BALANCES_KEY, merged);
 
 
   } catch (err) {
@@ -484,12 +624,23 @@ export const importMonthlyOpeningBalances = async (data: MonthlyOpeningBalance[]
 
 export const getAppSettings = async (): Promise<AppSettings> => {
   const raw = await getSecureItemInJsonFormat(APP_SETTINGS_KEY);
-    return raw ;
+
+  if (raw && typeof raw.pinEnabled === 'boolean') {
+    return raw as AppSettings;
+  }
+
+  // ✅ Provide all required fields from AppSettings interface
+  return {
+    pinEnabled: false,
+    biometricEnabled: false,
+    autoLockEnabled: false,
+    autoLockTime: 0, // or any sensible default in seconds
+  };
 };
 
 export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
   try {
-    await saveToStorageSecured(APP_SETTINGS_KEY, settings);
+    await saveSecureItemInJson(APP_SETTINGS_KEY, settings);
   } catch (err) {
     console.error('Failed to save app settings:', err);
     throw err;
@@ -549,7 +700,7 @@ export const clearAllData = async (): Promise<void> => {
 
 // PIN protection
 export const savePin = async (pin: string) => {
-  await saveToStorageSecured(PIN_KEY, pin);
+  await saveSecureItemInJson(PIN_KEY, pin);
 };
 
 export const getPin = async () => {
@@ -557,13 +708,17 @@ export const getPin = async () => {
 };
 
 export const validatePin = async (input: string) => {
+  console.log('enteredPin', input);
   const stored = await getPin();
-  return stored||'' === input;
+  console.log('stored', stored);
+  const isValid = (stored || '') === input;
+  console.log('isValid', isValid);
+  return isValid;
 };
 
 export const saveSecurityQA = async (question: string, answer: string) => {
-  await saveToStorageSecured(SECURITY_QUESTION_KEY, question);
-  await saveToStorageSecured(SECURITY_ANSWER_KEY, answer.toLowerCase().trim());
+  await saveSecureItemInJson(SECURITY_QUESTION_KEY, question);
+  await saveSecureItemInJson(SECURITY_ANSWER_KEY, answer.toLowerCase().trim());
 };
 
 export const getSecurityQA = async () => {
@@ -588,7 +743,7 @@ export const getPinFailedAttempts = async (): Promise<number> => {
 };
 
 export const setPinFailedAttempts = async (attempts: number) => {
-  await setSecureItem(PIN_ATTEMPT_KEY, attempts.toString());
+  await saveSecureItemInJson(PIN_ATTEMPT_KEY, attempts.toString());
 };
 
 export const getPinLockUntil = async (): Promise<number | null> => {
@@ -597,7 +752,7 @@ export const getPinLockUntil = async (): Promise<number | null> => {
 };
 
 export const setPinLockUntil = async (timestamp: number) => {
-  await setSecureItem(PIN_LOCK_UNTIL_KEY, timestamp.toString());
+  await saveSecureItemInJson(PIN_LOCK_UNTIL_KEY, timestamp.toString());
 };
 
 export const clearPinAttempts = async () => {
@@ -612,16 +767,6 @@ const mergeUniqueById = <T extends { id: string }>(existing: T[], incoming: T[])
   const map = new Map<string, T>();
   [...existing, ...incoming].forEach(item => map.set(item.id, item));
   return Array.from(map.values());
-};
-
-export const saveToStorageSecured = async (key: string, data: any) => {
-  try {
-
-    await setSecureItem(key, JSON.stringify(data));
-  } catch (error) {
-    console.error(`Failed to save data for key: ${key}`, error);
-    throw new Error('Secure save failed');
-  }
 };
 
 export const getCategoryWiseData = async (year: number, month: number): Promise<{ [key: string]: number }> => {
@@ -695,12 +840,12 @@ export const getComparisonBetweenMonths = async (
 export const getFallbackTransactionValues = async ({
   category,
   subCategory,
-  person,
+  selectedPerson,
   account,
 }: {
   category?: Category | null;
   subCategory?: SubCategory | null;
-  person?: Person | null;
+  selectedPerson?: Person | null;
   account?: Account | null;
 }) => {
   let fallbackCategory: Category | undefined = undefined;
@@ -732,7 +877,7 @@ export const getFallbackTransactionValues = async ({
   }
 
   // --- 3. Person Fallback ---
-  if (!person) {
+  if (!selectedPerson) {
     const allPersons = await getAllPersons();
     fallbackPerson = allPersons.find(p => p.name.trim().toLowerCase() === 'p_misc');
 
@@ -742,14 +887,14 @@ export const getFallbackTransactionValues = async ({
 
     // --- 4. Account Fallback ---
     const existingAccount = fallbackPerson.accounts?.find(
-      acc => acc.accountTypeOrName.trim().toLowerCase() === 'p_misc_acc'
+      acc => acc.paymentMode.trim().toLowerCase() === 'p_misc_acc'
     );
 
     if (existingAccount) {
       fallbackAccount = existingAccount;
     } else {
       fallbackAccount = await addAccountToPerson(fallbackPerson.id, {
-        accountTypeOrName: 'P_MISC_ACC',
+        paymentMode: 'P_MISC_ACC',
       });
     }
   }

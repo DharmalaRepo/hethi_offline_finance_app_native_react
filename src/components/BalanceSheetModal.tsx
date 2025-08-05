@@ -125,7 +125,7 @@ const BalanceSheetModal = ({
 
   const handleAdd = () => {
     if (!selectedPersonId || !selectedAccountId || !amount) {
-      Alert.alert('Validation Error', 'Please select person, account, and amount.');
+      Alert.alert('Validation Error', 'Please select person, paymentMode, and amount.');
       return;
     }
 
@@ -162,7 +162,7 @@ const BalanceSheetModal = ({
 
   const resolveAccountName = (id: string) => {
     const allAccounts = persons.flatMap(p => p.accounts);
-    return allAccounts.find(a => a.id === id)?.accountTypeOrName || id;
+    return allAccounts.find(a => a.id === id)?.paymentMode || id;
   };
 
   return (
@@ -218,19 +218,19 @@ const BalanceSheetModal = ({
               ))}
             </Picker>
 
-            <Text>Select Account:</Text>
+            <Text>Select PaymentMode:</Text>
             <Picker
               selectedValue={selectedAccountId}
               onValueChange={(value) => setSelectedAccountId(value)}
                enabled={!!(selectedPersonId || selectedFromHeader)}
             >
-               <Picker.Item label="Select Account" value="" />
+               <Picker.Item label="Select PaymentMode" value="" />
                 {filteredAccounts
                   .filter((a) => !selectedPersonId || a.personId === selectedPersonId)
                   .map((acc) => (
                         <Picker.Item
                           key={acc.id}
-                          label={acc.accountTypeOrName || acc.accountTypeOrName || acc.id}
+                          label={acc.paymentMode || acc.paymentMode || acc.id}
                           value={acc.id}
                         />
                       )

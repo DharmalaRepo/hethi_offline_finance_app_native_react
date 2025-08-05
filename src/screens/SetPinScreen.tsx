@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, ScrollView, Image
+  View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, ScrollView, Image, Modal, Pressable
 } from 'react-native';
 import {
   getPin,
@@ -12,8 +12,9 @@ import {
 } from '../services/mockDataService';
 
 const PinProtectionScreen = () => {
-  const [mode, setMode] = useState<'set' | 'change' | 'reset'>('set');
   const [pinExists, setPinExists] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [mode, setMode] = useState<'set' | 'change' | 'reset' | 'delete'>('set');
 
   const [oldPin, setOldPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -94,10 +95,21 @@ const PinProtectionScreen = () => {
     <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.header}>
                    <View style={styles.headerLeft}>
-                      <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                      <TouchableOpacity onPress={() => setModalVisible(true)}>
+                                  <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+                                </TouchableOpacity>
                       <Text style={styles.title}> 🔐 PIN Protection</Text>
                     </View>       
-                </View> 
+          </View>
+
+
+      <Modal visible={modalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalContainer}>
+          <Pressable onPress={() => setModalVisible(false)} style={styles.modalBackground}>
+            <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
+          </Pressable>
+        </View>
+      </Modal>
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
@@ -119,6 +131,12 @@ const PinProtectionScreen = () => {
               onPress={() => setMode('reset')}
             >
               <Text style={styles.tabText}>Forgot PIN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, mode === 'delete' && styles.activeTab]}
+              onPress={() => setMode('delete')}
+            >
+              <Text style={styles.tabText}>Delete PIN</Text>
             </TouchableOpacity>
           </>
         )}
@@ -207,6 +225,45 @@ const PinProtectionScreen = () => {
             style={styles.input}
           />
           <Button title="Reset PIN" onPress={handleResetPin} />
+        </>
+      )}
+
+      {mode === 'delete' && (
+        <>
+          <TextInput
+            secureTextEntry
+            placeholder="Enter Current PIN to Confirm"
+            value={oldPin}
+            onChangeText={setOldPin}
+            style={styles.input}
+          />
+          <Button
+            title="Delete PIN"
+            color="#d63031"
+            onPress={async () => {
+              const isValid = await validatePin(oldPin);
+              if (!isValid) {
+                Alert.alert('Invalid PIN', 'The PIN you entered is incorrect.');
+                return;
+              }
+
+              Alert.alert('Confirm Delete', 'Are you sure you want to delete your PIN?', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await savePin('');
+                    await saveSecurityQA('', '');
+                    setPinExists(false);
+                    setMode('set');
+                    resetFields();
+                    Alert.alert('PIN Deleted', 'Your PIN and security answer were deleted.');
+                  },
+                },
+              ]);
+            }}
+          />
         </>
       )}
     </ScrollView>
@@ -313,4 +370,20 @@ title: {
     marginBottom: 8,
     fontSize: 16,
   },
+  modalContainer: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.9)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalBackground: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    fullImage: {
+      width: '90%',
+      height: '90%',
+    },
 });

@@ -114,12 +114,12 @@ const TransactionEditDialog: React.FC<Props> = ({
           items={persons.map((p) => ({ label: p.name, value: p.id }))}
         />
 
-        <Text>Account:</Text>
+        <Text>PaymentMode:</Text>
         <RNPickerSelect
           onValueChange={(val) => handleChange('accountId', val)}
           value={editedTxn.accountId}
           items={accounts.map((a) => ({
-            label: `${a.personId} - ${a.accountTypeOrName}`,
+            label: `${a.personId} - ${a.paymentMode}`,
             value: a.id,
           }))}
         />

@@ -10,13 +10,32 @@ import { navigationRef } from './src/navigation/NavigationService';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { AppState, AppStateStatus } from 'react-native';
 import ReactNativeBiometrics from 'react-native-biometrics';
-
+import { View, Text, ToastAndroid } from 'react-native';
 
 const rnBiometrics = new ReactNativeBiometrics();
+declare const global: any;
 
 
 const ThemedApp = () => {
   const { paperTheme } = useThemeContext();
+
+
+ useEffect(() => {
+  if (global.ErrorUtils && typeof global.ErrorUtils.setGlobalHandler === 'function') {
+    global.ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
+      console.log('Global Error:', error.message);
+      if (Platform.OS === 'android') {
+        ToastAndroid.showWithGravity(
+          `Unexpected error occurred:\n${error.message}`,
+          ToastAndroid.LONG,
+          ToastAndroid.CENTER
+        );
+      }
+    });
+  } else {
+    console.warn('Global Error Handler not available');
+  }
+}, []);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
@@ -41,7 +60,6 @@ useEffect(() => {
         try {
           const granted = await PermissionsAndroid.requestMultiple([
             PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-            PermissionsAndroid.PERMISSIONS.CAMERA,
           ]);
 
           console.log('Permission results:', granted);
@@ -59,7 +77,7 @@ useEffect(() => {
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef}>
           <AppProvider>
-            <RootNavigator />           
+            <RootNavigator />
           </AppProvider>
         </NavigationContainer>
       </SafeAreaProvider>

@@ -208,9 +208,9 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               onValueChange={(val) => setAccountId(val)}
               style={styles.input}
             >
-              <Picker.Item label="Select Account" value="" />
+              <Picker.Item label="Select PaymentMode" value="" />
               {accounts.map((acc) => (
-                <Picker.Item key={acc.id} label={acc.accountTypeOrName} value={acc.id} />
+                <Picker.Item key={acc.id} label={acc.paymentMode} value={acc.id} />
               ))}
             </Picker>
 
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'black',
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   btnText: {
-    color: 'white',
+    color: 'black',
     fontWeight: 'bold',
     textAlign: 'center',
   },

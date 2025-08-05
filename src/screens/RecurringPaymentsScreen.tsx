@@ -8,7 +8,6 @@ import {
   TextInput,
   Alert, Image
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { RecurringPayment } from '../models/RecurringPayment';
 import RecurringPaymentModal from '../components/RecurringPaymentModal';
@@ -43,7 +42,6 @@ const RecurringPaymentsScreen = () => {
 
   const saveData = async (updated: RecurringPayment[]) => {
     saveRecurringPayments(updated);
-    await AsyncStorage.setItem('recurringPayments', JSON.stringify(updated));
   };
 
 
