@@ -13,12 +13,9 @@ import * as FileSystem from 'expo-file-system';
 import { Transaction } from '../models/Transaction';
 import { generateYearlyCategorySummary } from '../utils/reportExportUtils';
 import { formatCurrency } from '../utils/formatUtils';
-import { generatePDF, generateCSV, convertSummaryToCSV } from '../utils/exportUtils';
-import Share from 'react-native-share';
 import { format } from 'date-fns';
 import { Category } from '../models/Category';
-import { getCategories } from '../services/mockDataService';
-import XLSX from 'xlsx';
+import { getAllCategories_ } from '../services/mockDataService';
 import * as Print from 'expo-print';
 
 interface Props {
@@ -37,7 +34,7 @@ const YearlySummaryExportModal: React.FC<Props> = ({ visible, onClose, transacti
 
     useEffect(() => {
         const loadData = async () => {
-            const cats = await getCategories();
+            const cats = await getAllCategories_();
             setCategories(cats);
 
             // Split by type
@@ -107,7 +104,7 @@ const YearlySummaryExportModal: React.FC<Props> = ({ visible, onClose, transacti
     const handleExportPDF = async () => {
         try {
             let fileUri = '';
-            console.log('inside handleExportPDF');
+            //console.log('inside handleExportPDF');
             const html = buildSummaryHtml(summaryData, incomeRows, months);
 
             const { uri } = await Print.printToFileAsync({ html });
@@ -146,7 +143,7 @@ const YearlySummaryExportModal: React.FC<Props> = ({ visible, onClose, transacti
                     <td>${format(item.average)}</td>
                     <td>${format(item.percentContribution)}%</td>
                 </tr>`);
-            });
+        });
 
         // ➕ Total Expense Row
         const totalExpenseByMonth = months.map((m) =>
@@ -189,8 +186,8 @@ const YearlySummaryExportModal: React.FC<Props> = ({ visible, onClose, transacti
             <tr style="background-color:#fff9c4;">
             <td><b>Net Savings</b></td>
             ${netByMonth
-                        .map((v) => `<td style="color:${v >= 0 ? 'green' : 'red'}"><b>${format(v)}</b></td>`)
-                        .join('')}
+                .map((v) => `<td style="color:${v >= 0 ? 'green' : 'red'}"><b>${format(v)}</b></td>`)
+                .join('')}
             <td style="color:${netTotal >= 0 ? 'green' : 'red'}"><b>${format(netTotal)}</b></td>
             <td style="color:${netTotal >= 0 ? 'green' : 'red'}"><b>${format(netAverage)}</b></td>
             <td>-</td>

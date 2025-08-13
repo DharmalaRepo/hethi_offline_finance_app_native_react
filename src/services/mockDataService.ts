@@ -5,13 +5,11 @@ import { Account } from '../models/Account';
 import { Transaction } from '../models/Transaction';
 import { AppSettings } from '../models/AppSettings';
 import { RecurringPayment } from '../models/RecurringPayment';
-import * as transactionUtils from '../utils/transactionUtils';
 import uuid from 'react-native-uuid';
 import { normalizeText } from '../utils/textUtils';
 import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
 import { saveSecureItemInJson, removeSecureItem, getSecureItemInJsonFormat } from './secureStorageService';
-
 
 const CATEGORY_KEY = 'categories';
 const PERSON_KEY = 'persons';
@@ -41,7 +39,7 @@ export const saveToggleKey = async (value: string): Promise<void> => {
 
 //Categories
 
-export const getCategories = async (): Promise<Category[]> => {
+export const getAllCategories_ = async (): Promise<Category[]> => {
   try {
     const data = await getSecureItemInJsonFormat<Category[]>(CATEGORY_KEY);
     return data || [];
@@ -51,9 +49,9 @@ export const getCategories = async (): Promise<Category[]> => {
   }
 };
 
-export const getAllSubCategories = async (): Promise<SubCategory[]> => {
+export const getAllSubCategories_ = async (): Promise<SubCategory[]> => {
   try {
-    const categories = await getCategories(); // should already use secure retrieval
+    const categories = await getAllCategories_(); // should already use secure retrieval
 
     const allSubCategories: SubCategory[] = categories.flatMap((category) =>
       (category.subcategories || []).map((sub) => ({
@@ -73,7 +71,7 @@ export const getSubCategoriesByCategoryId = async (
   input: { categoryId: string }
 ): Promise<SubCategory[]> => {
   try {
-    const subcategories = await getAllSubCategories();
+    const subcategories = await getAllSubCategories_();
     const filtered = subcategories.filter(sc => sc.categoryId === input.categoryId);
     return filtered;
   } catch (error) {
@@ -182,7 +180,7 @@ export const addCategories = async (newCategories: Category[]) => {
 
 //Persons and accounts
 
-export const getAllPersons = async (): Promise<Person[]> => {
+export const getAllPersons_ = async (): Promise<Person[]> => {
   try {
     const data = await getSecureItemInJsonFormat<Person[]>(PERSON_KEY);
     return data || [];
@@ -191,18 +189,6 @@ export const getAllPersons = async (): Promise<Person[]> => {
     return [];
   }
 };
-
-
-export const getPersons = async (): Promise<Person[]> => {
-  try {
-    const data = await getSecureItemInJsonFormat<Person[]>(PERSON_KEY);
-    return data || [];
-  } catch (error) {
-    console.error('[getPersons1] Failed to fetch persons:', error);
-    return [];
-  }
-};
-
 
 export const savePersons = async (newPersons: Person[]) => {
   try {
@@ -256,7 +242,7 @@ export const addPerson = async (input: { name: string }): Promise<Person> => {
   }
 };
 
-export const getAccounts = async (): Promise<Account[]> => {
+export const getAllAccounts_ = async (): Promise<Account[]> => {
   try {
     const data = await getSecureItemInJsonFormat<Account[]>(ACCOUNT_KEY);
     return data || [];
@@ -298,10 +284,10 @@ export const addAccountToPerson = async (
 
 // Transactions
 
-export const getAllTransactions = async (): Promise<Transaction[]> => {
+export const getAllTransactions_ = async (): Promise<Transaction[]> => {
   try {
     const transactions = await getSecureItemInJsonFormat<Transaction[]>(TRANSACTION_KEY);
-    //console.log(transactions?transactions.length:0, 'transactions found');
+    ////console.log(transactions?transactions.length:0, 'transactions found');
     return transactions || [];
   } catch (error) {
     console.error('[getAllTransactions] Failed to retrieve:', error);
@@ -314,7 +300,7 @@ export const getTransactionsForMonth = async (
   month: number
 ): Promise<Transaction[]> => {
   try {
-    const all = await getAllTransactions();
+    const all = await getAllTransactions_();
 
     return all.filter(txn => {
       const txnDate = new Date(txn.date);
@@ -328,7 +314,7 @@ export const getTransactionsForMonth = async (
 
 export const saveTransaction = async (tx: Transaction): Promise<void> => {
   try {
-    const existing = await getAllTransactions();
+    const existing = await getAllTransactions_();
     const updated = [...existing, tx];
     await saveSecureItemInJson(TRANSACTION_KEY, updated);
   } catch (err) {
@@ -372,7 +358,7 @@ export const addTransactions = async (newTransactions: Transaction[]) => {
 
 export const updateTransaction = async (updated: Transaction): Promise<void> => {
   try {
-    const existing = await getAllTransactions();
+    const existing = await getAllTransactions_();
 
     const updatedList = existing.map(tx =>
       tx.id === updated.id ? { ...tx, ...updated } : tx
@@ -388,7 +374,7 @@ export const updateTransaction = async (updated: Transaction): Promise<void> => 
 
 export const deleteTransaction = async (id: string): Promise<void> => {
   try {
-    const existing: Transaction[] = await getAllTransactions();
+    const existing: Transaction[] = await getAllTransactions_();
 
     const newList = existing.filter(tx => tx.id !== id);
 
@@ -402,7 +388,7 @@ export const deleteTransaction = async (id: string): Promise<void> => {
 
 // Recurring payments
 
-export const getAllRecurringPayments = async (): Promise<RecurringPayment[]> => {
+export const getAllRecurringPayments_ = async (): Promise<RecurringPayment[]> => {
   try {
     const data = await getSecureItemInJsonFormat<RecurringPayment[]>(RECURRINGPAYEMENTS_KEY);
     return data || [];
@@ -448,7 +434,7 @@ export const addRecurringPayments = async (newRecurringPayments: RecurringPaymen
 // Balance sheets
 
 // 1. Get Opening Balances
-export const getOpeningBalances = async (): Promise<MonthlyOpeningBalance[]> => {
+export const getAllOpeningBalances_ = async (): Promise<MonthlyOpeningBalance[]> => {
   try {
     const data = await getSecureItemInJsonFormat<MonthlyOpeningBalance[]>(OPENING_BALANCES_KEY);
     return data || [];
@@ -493,7 +479,7 @@ export const addOpeningBalances = async (newBalances: MonthlyOpeningBalance[]): 
 };
 
 // 3. Get Closing Balances
-export const getClosingBalances = async (): Promise<MonthlyClosingBalance[]> => {
+export const getAllClosingBalances_ = async (): Promise<MonthlyClosingBalance[]> => {
   try {
     const data = await getSecureItemInJsonFormat<MonthlyClosingBalance[]>(CLOSING_BALANCES_KEY);
     return data || [];
@@ -622,7 +608,7 @@ export const importMonthlyOpeningBalances = async (data: MonthlyOpeningBalance[]
 
 // App settings
 
-export const getAppSettings = async (): Promise<AppSettings> => {
+export const getAppSettings_ = async (): Promise<AppSettings> => {
   const raw = await getSecureItemInJsonFormat(APP_SETTINGS_KEY);
 
   if (raw && typeof raw.pinEnabled === 'boolean') {
@@ -662,10 +648,10 @@ export const clearAppSettings = async (): Promise<void> => {
 export const exportAllData = async (): Promise<any> => {
   try {
     const [categories, persons, transactions, recurringPayments] = await Promise.all([
-      getCategories(),
-      getAllPersons(),
-      getAllTransactions(),
-      getAllRecurringPayments(),
+      getAllCategories_(),
+      getAllPersons_(),
+      getAllTransactions_(),
+      getAllRecurringPayments_(),
     ]);
 
     return {
@@ -708,11 +694,8 @@ export const getPin = async () => {
 };
 
 export const validatePin = async (input: string) => {
-  console.log('enteredPin', input);
   const stored = await getPin();
-  console.log('stored', stored);
   const isValid = (stored || '') === input;
-  console.log('isValid', isValid);
   return isValid;
 };
 
@@ -820,7 +803,7 @@ export const getComparisonBetweenMonths = async (
   month2: string
 ): Promise<[Transaction[], Transaction[]]> => {
   try {
-    const all = await getAllTransactions();
+    const all = await getAllTransactions_();
 
     const [txns1, txns2] = [month1, month2].map(m =>
       all.filter(t => t.date.startsWith(m))
@@ -855,7 +838,7 @@ export const getFallbackTransactionValues = async ({
 
   // --- 1. Category Fallback ---
   if (!category) {
-    const allCategories = await getCategories();
+    const allCategories = await getAllCategories_();
     fallbackCategory = allCategories.find(c => c.name.trim().toLowerCase() === 'misc');
 
     if (!fallbackCategory) {
@@ -878,7 +861,7 @@ export const getFallbackTransactionValues = async ({
 
   // --- 3. Person Fallback ---
   if (!selectedPerson) {
-    const allPersons = await getAllPersons();
+    const allPersons = await getAllPersons_();
     fallbackPerson = allPersons.find(p => p.name.trim().toLowerCase() === 'p_misc');
 
     if (!fallbackPerson) {

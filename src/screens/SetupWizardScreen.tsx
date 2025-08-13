@@ -1,12 +1,10 @@
 // src/screens/SetupWizardScreen.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { getAppSettings, saveAppSettings, getPin } from '../services/mockDataService';
+import { getAppSettings_, saveAppSettings, getPin } from '../services/mockDataService';
 import { AppSettings } from '../models/AppSettings';
-import { getAccounts } from '../services/mockDataService';
-import { getAllPersons } from '../services/mockDataService';
-import { getCategories, getSubCategoriesByCategoryId } from '../services/mockDataService';
+import { getSubCategoriesByCategoryId } from '../services/mockDataService';
 import { showToast } from '../utils/toastUtils';
 import { Account } from '../models/Account';
 import { Person } from '../models/Person';
@@ -14,19 +12,16 @@ import { Category } from '../models/Category';
 import { SubCategory } from '../models/SubCategory';
 import { useContext } from 'react';
 import { useThemeContext } from '../components/ThemeContext';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MoreStackParamList } from '../navigation/routes'; // Adjust path
 import { StackNavigationProp } from '@react-navigation/stack';
 import { ToastAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Alert } from 'react-native';
+import { useAppData } from '../context/AppDataProvider';
 
 
 const SetupWizardScreen = () => {
-  
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [persons, setPersons] = useState<Person[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
   const { toggleTheme } = useThemeContext();
   const [isPinSet, setIsPinSet] = useState(false);
@@ -41,6 +36,21 @@ const SetupWizardScreen = () => {
     securityAnswer: '',
   });
 
+    const {
+      persons,
+      categories,
+      transactions,
+      recurringPayments,
+      monthlyOpeningBalance,
+      monthlyClosingBalance,
+      reloadAppData,
+    } = useAppData();
+  
+    useEffect(() => {
+      reloadAppData();
+    }, []);
+  
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -54,17 +64,9 @@ const SetupWizardScreen = () => {
   }, []);
 
   const loadInitialData = async () => {
-    const settingsData = await getAppSettings();
+    const settingsData = await getAppSettings_();
     setSettings(settingsData);
-
-    const accs = await getAccounts();
-    const pers = await getAllPersons();
-    const cats = await getCategories();
-
-    setAccounts(accs);
-    setPersons(pers);
-    setCategories(cats);
-
+     reloadAppData(); 
     if (settingsData.defaultCategoryId) {
       const subs = await getSubCategoriesByCategoryId({ categoryId:settingsData.defaultCategoryId});
       setSubcategories(subs);

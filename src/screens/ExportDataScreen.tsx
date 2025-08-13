@@ -11,18 +11,27 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import {
   exportAllData,
-  getCategories,
-  getAllPersons,
-  getAllTransactions,
-  getAllRecurringPayments,
 } from '../services/mockDataService';
 
 import CryptoJS from 'crypto-js';
+import { useAppData } from '../context/AppDataProvider';
 
 const ENCRYPTION_KEY = 'HETHI_DATA_ENCRYPTION_KEY';
 
 const ExportDataScreen = () => {
   const [exporting, setExporting] = useState(false);
+
+
+    const {
+      persons,
+      categories,
+      subcategories,
+      transactions,
+      recurringPayments,
+      monthlyOpeningBalance,
+      monthlyClosingBalance,
+      reloadAppData,
+    } = useAppData();
 
   const encryptData = (data: string): string => {
     try {
@@ -52,16 +61,16 @@ const ExportDataScreen = () => {
           data = await exportAllData();
           break;
         case 'categories':
-          data = { categories: await getCategories() };
+          data = categories;
           break;
         case 'persons':
-          data = { persons: await getAllPersons() };
+          data = persons;
           break;
         case 'transactions':
-          data = { transactions: await getAllTransactions() };
+          data = transactions;
           break;
         case 'recurring':
-          data = { recurringPayments: await getAllRecurringPayments() };
+          data = recurringPayments;
           break;
         default:
           throw new Error('Invalid export type');
@@ -74,12 +83,10 @@ const ExportDataScreen = () => {
         throw new Error('Encryption failed');
       }
 
-      console.log('jsonString', jsonString);
 
       // Step 3: Save encrypted data to file
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileUri = `${FileSystem.documentDirectory}${type}_export_${timestamp}.json`;
-      console.log('fileUri', fileUri);
       await FileSystem.writeAsStringAsync(fileUri, jsonString);
 
       await Sharing.shareAsync(fileUri, {

@@ -7,18 +7,20 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { Category, Subcategory } from '../screens/ManageCategoriesScreen';
+import { Category } from '../models/Category';
+import { SubCategory } from '../models/SubCategory';
+import { useAppData } from '../context/AppDataProvider';
 
 export interface SubcategoryModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (name: string) => void;
   category: Category | null;
-  subcategories: Subcategory[];
-  onEdit: (sub: Subcategory) => void;
+  subcategories: SubCategory[];
+  onEdit: (sub: SubCategory) => void;
   onDelete: (subId: string) => void;
   onSaveEdit: (name: string) => void;
-  editingSub: Subcategory | null;
+  editingSub: SubCategory | null;
 }
 
 const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
@@ -33,6 +35,16 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
   editingSub,
 }) => {
   const [name, setName] = useState('');
+    const {
+        persons,
+        categories,
+        accounts,
+        transactions,
+        recurringPayments,
+        monthlyOpeningBalance,
+        monthlyClosingBalance,
+        reloadAppData,
+      } = useAppData();
 
   useEffect(() => {
     setName(editingSub?.name || '');
@@ -48,6 +60,7 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
       onSave(trimmed);
     }
     setName('');
+    reloadAppData();
   };
 
   return (

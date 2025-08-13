@@ -11,6 +11,7 @@ import { PermissionsAndroid, Platform } from 'react-native';
 import { AppState, AppStateStatus } from 'react-native';
 import ReactNativeBiometrics from 'react-native-biometrics';
 import { View, Text, ToastAndroid } from 'react-native';
+import { AppDataProvider } from './src/context/AppDataProvider';
 
 const rnBiometrics = new ReactNativeBiometrics();
 declare const global: any;
@@ -23,7 +24,7 @@ const ThemedApp = () => {
  useEffect(() => {
   if (global.ErrorUtils && typeof global.ErrorUtils.setGlobalHandler === 'function') {
     global.ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
-      console.log('Global Error:', error.message);
+      //console.log('Global Error:', error.message);
       if (Platform.OS === 'android') {
         ToastAndroid.showWithGravity(
           `Unexpected error occurred:\n${error.message}`,
@@ -62,7 +63,7 @@ useEffect(() => {
             PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
           ]);
 
-          console.log('Permission results:', granted);
+          //console.log('Permission results:', granted);
         } catch (err) {
           console.warn('Permission error:', err);
         }
@@ -76,9 +77,11 @@ useEffect(() => {
     <PaperProvider theme={paperTheme}>
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef}>
-          <AppProvider>
-            <RootNavigator />
-          </AppProvider>
+          <AppDataProvider>
+            <AppProvider>
+              <RootNavigator />
+            </AppProvider>
+          </AppDataProvider>
         </NavigationContainer>
       </SafeAreaProvider>
     </PaperProvider>

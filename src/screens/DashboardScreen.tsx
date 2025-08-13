@@ -1,40 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image, Switch,
+  Image, 
   Dimensions, Modal, Pressable,
   Alert, Button
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   CompositeNavigationProp,
+  useIsFocused,
   useNavigation,
 } from '@react-navigation/native';
 import {
   NativeStackNavigationProp,
 } from '@react-navigation/native-stack';
 import type { RootStackParamList, MoreStackParamList } from '../navigation/routes';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Category } from '../models/Category';
-import { Person } from '../models/Person';
-import { Account } from '../models/Account';
 import { SubCategory } from '../models/SubCategory';
-import { Transaction } from '../models/Transaction';
 import { RecurringPayment } from '../models/RecurringPayment';
 import ReminderCard from '../components/ReminderCard'; // adjust the path as needed
-import {
-  getCategories, getAllTransactions, getAllRecurringPayments, getPersons, getAllPersons, getAccounts, addCategory,
-  addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues
-} from '../services/mockDataService';
 import { isSameDay, parseISO, isAfter, isBefore } from 'date-fns';
 import { useAppContext } from '../context/AppContext';
 import { loadPredefinedCategories } from '../screens/DataManagementScreen';
-import { getCurrentMonthRange } from '../utils/dateUtils';
 import SavingsBreakdownModal from '../components/SavingsBreakdownModal';
+import { useAppData } from '../context/AppDataProvider';
 
 
 type Props = {
@@ -67,16 +59,29 @@ const DashboardScreen = () => {
   const [personCount, setPersonCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
-  const { startDate, endDate } = getCurrentMonthRange();
-  const [savingsModalVisible, setSavingsModalVisible] = useState(false);
-  const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-  const currentYear = new Date().getFullYear();
+
   const [showSavingsModal, setShowSavingsModal] = useState(false);
   const [topIncomeCategories, setTopIncomeCategories] = useState<{ name: string; amount: number }[]>([]);
   const [topExpenseCategories, setTopExpenseCategories] = useState<{ name: string; amount: number }[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, string>>({});
+
+  const {
+    persons,
+    categories,
+    transactions,
+    recurringPayments,
+    reloadAppData,
+  } = useAppData();
+
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      loadDashboardData();
+    }
+  }, [isFocused]);
+
 
   const SummaryCard = ({ title, value, icon, color, onPress }: Props) => {
     return (
@@ -90,26 +95,6 @@ const DashboardScreen = () => {
       </TouchableOpacity>
     );
   };
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      const data = await getCategories(); // adjust import path
-      setCategories(data);
-    };
-    loadCategories();
-  }, []);
-
-  useEffect(() => {
-    loadDashboardData(); // call async wrapper
-  }, []);
-
-  useEffect(() => {
-    const loadTxns = async () => {
-      const data = await getAllTransactions(); // adjust import path if needed
-      setTransactions(data);
-    };
-    loadTxns();
-  }, []);
 
   useEffect(() => {
     const calculateTopCategories = () => {
@@ -148,15 +133,23 @@ const DashboardScreen = () => {
     }
   }, [transactions, categories]);
 
-  const today = new Date();
+
+  const loadCategoryMaps = async () => {
+    const catMap: Record<string, string> = {};
+    const subMap: Record<string, string> = {};
+    categories.forEach((cat) => {
+      catMap[cat.id] = cat.name;
+      cat.subcategories?.forEach((sub: SubCategory) => {
+        subMap[sub.id] = sub.name;
+      });
+    });
+    setCategoriesMap(catMap);
+  };
 
   const loadDashboardData = async () => {
+    await reloadAppData();
     const today = new Date().toISOString().slice(0, 10);
-
-    const transactions = await getAllTransactions();
-    const reminders = await getAllRecurringPayments();
-    const filtered = reminders.filter(r => {
-      //console.log(r);
+    const filtered = recurringPayments.filter(r => {
       const today1 = new Date()
       const todayDate = today1.getDate();
       if (!r.startDate || !r.endDate) return false;
@@ -194,36 +187,20 @@ const DashboardScreen = () => {
       })
       .reduce((sum, t) => sum + t.amount, 0));
 
-    const persons = await getAllPersons();
     setPersonCount(persons.length);
-    const categories = await getCategories();
     setCategoriesCount(categories.length);
   };
 
 
   const reloadConfig = async () => {
-    console.log('Reload dashboard data');
     loadDashboardData();
-    const fetchedCategories = await getCategories();
-    const allSubCategories = fetchedCategories.flatMap(cat =>
-      (cat.subcategories || []).map(sub => ({ ...sub, categoryId: cat.id }))
-    );
-    const persons = await getAllPersons();
-    const accounts = await getAccounts();
   };
 
-  const MiniCard = ({ label, value, color }: { label: string, value: number, color: string }) => (
-    <View style={styles.card}>
-      <Text style={[styles.label, { color }]}>{label}</Text>
-      <Text style={[styles.amount, { color }]}>{value.toFixed(2)}</Text>
-    </View>
-  );
 
   const handleLoadPredefined = async () => {
     await loadPredefinedCategories();
     Alert.alert('Success', 'Predefined categories and subcategories loaded!');
   };
-
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -390,6 +367,7 @@ const DashboardScreen = () => {
         </TouchableOpacity>
       </View>
 
+
       <SavingsBreakdownModal
         visible={showSavingsModal}
         onClose={() => setShowSavingsModal(false)}
@@ -398,8 +376,12 @@ const DashboardScreen = () => {
         topIncomeCategories={topIncomeCategories}
         topExpenseCategories={topExpenseCategories}
       />
+
+
+
     </ScrollView>
   );
+
 };
 
 const SummaryCard = ({ title, value, icon, color }: any) => (

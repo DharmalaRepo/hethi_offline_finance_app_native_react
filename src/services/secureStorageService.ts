@@ -2,7 +2,7 @@ import EncryptedStorage from 'react-native-encrypted-storage';
 import { Platform } from 'react-native';
 
 
-console.log('EncryptedStorage test:', EncryptedStorage);
+//console.log('EncryptedStorage test:', EncryptedStorage);
 
 /*
 export const getSecureItem = async (key: string): Promise<string | null> => {

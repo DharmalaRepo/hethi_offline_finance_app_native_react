@@ -2,32 +2,39 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
-import { getAllTransactions, updateTransaction, saveTransaction } from '../services/mockDataService';
+import { updateTransaction, saveTransaction } from '../services/mockDataService';
 import { Transaction } from '../models/Transaction';
 import { resolveCategoryName, resolvePersonName, resolveSubCategoryName } from '../utils/configUtils';
 import { Ionicons } from '@expo/vector-icons';
 import uuid from 'react-native-uuid';
 import { useAppContext  } from '../context/AppContext';
+import { useAppData } from '../context/AppDataProvider';
+import { useIsFocused } from '@react-navigation/native';
 
 
 
 const ReversibleTransactionsScreen = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const { showSensitiveData, toggleSensitiveData } = useAppContext(); // ✅ Use global toggle
+  const { showSensitiveData } = useAppContext(); // ✅ Use global toggle
+    const [filteredTransactions, setFilteredTransactions] = useState<Transaction[] | []>([]);
 
-  useEffect(() => {    
-    loadData();
-  }, []);
+  const {
+    transactions,
+    reloadAppData,
+  } = useAppData();
 
-  const loadData = async () => {
-      const all = await getAllTransactions();
-      const filtered = all.filter(t => t.isReversible && !t.isSettled);
-      setTransactions(filtered);
+    const isFocused = useIsFocused();
+  
+    useEffect(() => {
+      if (isFocused) {
+        reloadData();
+      }
+    }, [isFocused]);
+
+    const reloadData = async () => {
+      reloadAppData();
+      setFilteredTransactions(transactions.filter(t => t.isReversible && !t.isSettled));
     };
 
-  const refresh = async () => {
-    await loadData();
-  };
 
     const TableHeader = () => (
   <View style={[styles.tableRow, styles.tableHeader]}>
@@ -40,19 +47,7 @@ const ReversibleTransactionsScreen = () => {
   </View>
 );
 
-  const markAsSettled = async (txn: Transaction) => {
-    Alert.alert('Mark as Settled', 'Are you sure you want to mark this as settled?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Settle',
-        style: 'destructive',
-        onPress: async () => {
-          await updateTransaction({ ...txn, isSettled: true });
-          setTransactions(prev => prev.filter(t => t.id !== txn.id));
-        }
-      }
-    ]);
-  };
+
 
 
 const renderItem = ({ item }: { item: Transaction }) => {
@@ -94,7 +89,7 @@ const renderItem = ({ item }: { item: Transaction }) => {
         text: 'Just Mark Settled',
         onPress: async () => {
           await updateTransaction({ ...txn, isSettled: true });
-          refresh();
+          reloadData();
         },
       },
       {
@@ -119,9 +114,8 @@ const renderItem = ({ item }: { item: Transaction }) => {
           };
 
           await saveTransaction(reverseTxn);
-          //console.log('Reverse transaction saved:', reverseTxn);
           await updateTransaction({ ...txn, isSettled: true });
-          refresh();
+          reloadData();
         },
       },
     ]
@@ -136,17 +130,17 @@ const renderItem = ({ item }: { item: Transaction }) => {
                             <Text style={styles.title}> Actionable Transactions</Text>
                           </View>   
                           <View style={styles.headerRight}>
-                            <TouchableOpacity onPress={refresh} style={styles.iconButton}>
+                            <TouchableOpacity onPress={reloadData} style={styles.iconButton}>
                               <Ionicons name="refresh" size={22} color="#e6f0ff" />
                             </TouchableOpacity>
                           </View>      
                       </View> 
 
-      {transactions.length === 0 ? (
+      {filteredTransactions.length === 0 ? (
         <Text style={styles.noData}>All dues are settled! 🎉</Text>
       ) : (
         <FlatList
-          data={transactions}
+          data={filteredTransactions}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={<TableHeader />}
           renderItem={renderItem}

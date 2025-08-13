@@ -1,38 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CheckBox from '@react-native-community/checkbox';
 import { Picker } from '@react-native-picker/picker';
-import uuid from 'react-native-uuid';
 import BalanceSheetModal from '../components/BalanceSheetModal';
-import { getOpeningBalances, getClosingBalances, getPersons, saveOpeningBalances, saveClosingBalances } from '../services/mockDataService';
-import { getAllTransactions } from '../services/mockDataService';
-import { Person } from '../models/Person';
+import { saveOpeningBalances, saveClosingBalances } from '../services/mockDataService';
 import { Account } from '../models/Account';
-import { Transaction } from '../models/Transaction';
 import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
 import {
-  calculateSummary, getUniqueYearsMonths, getFilteredBalances,
+  calculateSummary, getFilteredBalances,
   getFilteredTransactions, generatePersonAccountSummary
 } from '../utils/balanceSheetUtils';
-import { Alert } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import MonthPicker from 'react-native-month-year-picker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { useAppData } from '../context/AppDataProvider';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { format } from 'date-fns';
+
 
 const BalanceSheetScreen = () => {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear().toString());
-  const [month, setMonth] = useState((today.getMonth() + 1).toString().padStart(2, '0'));
   const [modalVisible1, setModalVisible1] = useState(false);
-  const [persons, setPersons] = useState<Person[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [openingBalances, setOpeningBalances] = useState<MonthlyOpeningBalance[]>([]);
-  const [closingBalances, setClosingBalances] = useState<MonthlyClosingBalance[]>([]);
-
   const [selectedPersonId, setSelectedPersonId] = useState<string>('');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -40,32 +30,69 @@ const BalanceSheetScreen = () => {
   const [modalType, setModalType] = useState<'opening' | 'closing'>('opening');
   const [showOpening, setShowOpening] = useState<boolean>(true);
   const [showClosing, setShowClosing] = useState<boolean>(true);
-  const getPersonName = (id: string) => persons.find(p => p.id === id)?.name || 'Unknown';
-  const getAccountName = (id: string) => accounts.find(a => a.id === id)?.paymentMode || 'Unknown';
   const [expandedIndexes, setExpandedIndexes] = useState<number[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(month);
   const [selectedYear, setSelectedYear] = useState(year);
+  const defaultMonth = `${today.getFullYear()} - ${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const [month, setMonth] = useState(defaultMonth);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(today);
+  const [selectedMonth, setSelectedMonth] = useState(month);
+  const [expandedOpening, setExpandedOpening] = useState<number[]>([]);
+  const [expandedClosing, setExpandedClosing] = useState<number[]>([]);
 
 
-  const onMonthYearChange = (event: any, selected?: Date) => {
-    setShowMonthYearPicker(false);
-    if (selected) {
-      setSelectedDate(selected);
-      setMonth(`${(selected.getMonth() + 1).toString().padStart(2, '0')}`);
-      setYear(`${selected.getFullYear()}`);
+  const {
+    persons,
+    transactions,
+    monthlyOpeningBalance,
+    monthlyClosingBalance,
+    reloadAppData,
+    dataVersion,
+  } = useAppData();
+
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      console.log('TransactionsScreen is focused');
+      reloadbalanceSheetData();
     }
+  }, [isFocused]);
+
+  // Recompute when the source-of-truth changes:
+  useEffect(() => {
+    console.log('BalanceSheet: dataVersion changed → recompute derived');
+  }, [dataVersion, persons, transactions, monthlyOpeningBalance, monthlyClosingBalance]);
+
+  useEffect(() => {
+    if (selectedPersonId) {
+      const person = persons.find(p => p.id === selectedPersonId);
+      setAccounts(person?.accounts || []);
+    } else {
+      setAccounts([]);
+    }
+  }, [selectedPersonId, persons]);
+
+  const filteredOpening = getFilteredBalances(monthlyOpeningBalance, year, month, selectedPersonId, selectedAccountId);
+  const filteredClosing = getFilteredBalances(monthlyClosingBalance, year, month, selectedPersonId, selectedAccountId);
+  const filteredTxns = getFilteredTransactions(transactions, year, month, selectedPersonId, selectedAccountId);
+  const openingSummaryData = generatePersonAccountSummary(filteredOpening, selectedPersonId, selectedAccountId);
+  const closingSummaryData = generatePersonAccountSummary(filteredClosing, selectedPersonId, selectedAccountId);
+  const balanceSummary = calculateSummary(filteredTxns, filteredOpening, filteredClosing, { year, month, personId: selectedPersonId, accountId: selectedAccountId });
+
+  const reloadbalanceSheetData = async () => {
+    await reloadAppData();
   };
 
-
-  const toggleExpand = (index: number) => {
-    setExpandedIndexes((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
-    );
+  const toggleExpand = (index: number, type: 'opening' | 'closing') => {
+    if (type === 'opening') {
+      setExpandedOpening(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
+    } else {
+      setExpandedClosing(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
+    }
   };
 
   const toggleCheckbox = (personId: string) => {
@@ -110,66 +137,78 @@ const BalanceSheetScreen = () => {
       .reduce((sum, b) => sum + b.amount, 0);
   };
 
-  const getClosingBalance = (
-    balances: (MonthlyClosingBalance)[],
-    year: string,
-    month: string,
-    personId?: string,
-    accountId?: string
-  ): number => {
-    return balances
-      .filter(
-        b =>
-          b.year === year &&
-          b.month === month &&
-          (!personId || b.personId === personId) &&
-          (!accountId || b.accountId === accountId)
-      )
-      .reduce((sum, b) => sum + b.amount, 0);
-  };
+  const handleCarryForward = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
 
-  useEffect(() => {
-    loadData();
-  }, []);
+    console.log(`Current Year: ${currentYear}, Current Month: ${currentMonth}`);
 
-  const reloadData = () => {
-    loadData();
-    console.log("Reloading Monthly DashBoard sheets...");
-  };
-
-  useEffect(() => {
-    if (selectedPersonId) {
-      const person = persons.find(p => p.id === selectedPersonId);
-      setAccounts(person?.accounts || []);
-    } else {
-      setAccounts([]);
+    // Restrict to past months only
+    if (Number(year) > currentYear || (Number(year) === currentYear && Number(month) >= currentMonth)) {
+      Alert.alert("Not Allowed", "You can only carry forward from past months.");
+      return;
     }
-  }, [selectedPersonId]);
 
-  const loadData = async () => {
-    const txns = await getAllTransactions();
-    const ob = await getOpeningBalances();
-    const cb = await getClosingBalances();
-    const ps = await getPersons();
+    // Calculate target month/year (next month from given)
+    const fromDate = new Date(Number(year), Number(month) - 1);
+    const toDate = new Date(fromDate);
+    toDate.setMonth(toDate.getMonth() + 1);
 
-    setTransactions(Array.isArray(txns) ? txns : []);
-    setOpeningBalances(ob);
-    setClosingBalances(cb);
-    setPersons(ps);
+    console.log(`From Date: ${fromDate}, To Date: ${toDate}`);
+
+    // If target is beyond current month, block
+    if (
+      toDate.getFullYear() > currentYear ||
+      (toDate.getFullYear() === currentYear && toDate.getMonth() + 1 > currentMonth)
+    ) {
+      Alert.alert("Not Allowed", "You can only carry forward up to the current month.");
+      return;
+    }
+
+    console.log(`Carrying forward from ${format(fromDate, 'MMM yyyy')} to ${format(toDate, 'MMM yyyy')}`);
+
+    Alert.alert(
+      "Carry Forward",
+      `Do you want to carry forward closing balance from ${format(fromDate, 'MMM yyyy')} to opening balance of ${format(toDate, 'MMM yyyy')}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Yes", onPress: () => doCarryForward(fromDate, toDate) }
+      ]
+    );
   };
 
-  const filteredOpening = getFilteredBalances(openingBalances, year, month, selectedPersonId, selectedAccountId);
-  const filteredClosing = getFilteredBalances(closingBalances, year, month, selectedPersonId, selectedAccountId);
-  const filteredTxns = getFilteredTransactions(transactions, year, month, selectedPersonId, selectedAccountId);
-  const openingSummaryData = generatePersonAccountSummary(filteredOpening, selectedPersonId, selectedAccountId);
-  const closingSummaryData = generatePersonAccountSummary(filteredClosing, selectedPersonId, selectedAccountId);
-  const balanceSummary = calculateSummary(filteredTxns, filteredOpening, filteredClosing, { year, month, personId: selectedPersonId, accountId: selectedAccountId });
+  const doCarryForward = async (fromDate: Date, toDate: Date) => {
+    const fromYear = String(fromDate.getFullYear());
+    const fromMonth = String(fromDate.getMonth() + 1);
+    const toYear = String(toDate.getFullYear());
+    const toMonth = String(toDate.getMonth() + 1);
 
-  const openModal = (type: 'opening' | 'closing') => {
-    setModalType(type);
-    setModalVisible(true);
+    const source = monthlyClosingBalance.filter(
+      b => b.year === fromYear && b.month === fromMonth
+    );
+
+    if (source.length === 0) {
+      Alert.alert("No Data", "No closing balances found for this month.");
+      return;
+    }
+
+    const newOpening = source.map(b => ({
+      ...b,
+      id: crypto.randomUUID(),
+      year: toYear,
+      month: toMonth,
+      note: `Carried forward from ${fromMonth}/${fromYear}`
+    }));
+
+    const others = monthlyOpeningBalance.filter(
+      ob => !(ob.year === toYear && ob.month === toMonth)
+    );
+
+    await saveOpeningBalances([...others, ...newOpening]);
+    reloadAppData();
+    Alert.alert("Success", "Closing balances carried forward successfully.");
   };
-
 
 
   return (
@@ -184,7 +223,7 @@ const BalanceSheetScreen = () => {
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={reloadData} style={styles.iconButton}>
+          <TouchableOpacity onPress={reloadbalanceSheetData} style={styles.iconButton}>
             <Ionicons name="refresh" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -254,7 +293,7 @@ const BalanceSheetScreen = () => {
           <Text style={styles.balanceAmount}>
             ₹{' '}
             {getBalance(
-              openingBalances,
+              monthlyOpeningBalance,
               year,
               month,
               selectedPersonId,
@@ -280,7 +319,7 @@ const BalanceSheetScreen = () => {
               <View key={personSummary.personId} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
                 {/* Person Summary Header */}
                 <TouchableOpacity
-                  onPress={() => toggleExpand(index)}
+                  onPress={() => toggleExpand(index, 'opening')}
                   style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#e8f1ff' }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -329,7 +368,7 @@ const BalanceSheetScreen = () => {
           <Text style={styles.balanceAmount}>
             ₹{' '}
             {getBalance(
-              closingBalances,
+              monthlyClosingBalance,
               year,
               month,
               selectedPersonId,
@@ -355,7 +394,7 @@ const BalanceSheetScreen = () => {
               <View key={personSummary.personId} style={{ marginBottom: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
                 {/* Person Summary Header */}
                 <TouchableOpacity
-                  onPress={() => toggleExpand(index)}
+                  onPress={() => toggleExpand(index, 'closing')}
                   style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#e8f1ff' }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -395,10 +434,12 @@ const BalanceSheetScreen = () => {
             ))}
           </View>
         )}
+        
       </View>
 
-
-
+      <TouchableOpacity style={styles.btn} onPress={handleCarryForward}>
+        <Text style={styles.btnText}>Carry Forward</Text>
+      </TouchableOpacity>
 
       <View style={{ backgroundColor: '#f1f6fd', borderRadius: 10, padding: 16, marginVertical: 16, shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 3 }}>
         <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#2a4d8f' }}>Transaction Summary</Text>
@@ -438,17 +479,15 @@ const BalanceSheetScreen = () => {
         month={month}
         persons={persons}
         accounts={accounts}
-        balances={modalType === 'opening' ? openingBalances : closingBalances}
+        balances={modalType === 'opening' ? monthlyOpeningBalance : monthlyClosingBalance}
         selectedPersonId={selectedPersonId}
-        onSave={(updated) => {
+        onSave={async (updated) => {
           if (modalType === 'opening') {
-            saveOpeningBalances(updated as MonthlyOpeningBalance[]);
-            setOpeningBalances(updated as MonthlyOpeningBalance[]);
+            await saveOpeningBalances(updated as MonthlyOpeningBalance[]);
           } else {
-            saveClosingBalances(updated as MonthlyClosingBalance[]);
-            setClosingBalances(updated as MonthlyClosingBalance[]);
+            await saveClosingBalances(updated as MonthlyClosingBalance[]);
           }
-          loadData(); // Call this independently after state update
+          reloadAppData(); // Provider updates, consumers re-render; no need to set local arrays
         }}
       />
 
@@ -707,11 +746,23 @@ const styles = StyleSheet.create({
     height: '90%',
   },
   filterRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  btn: {
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 10
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: '600'
+  }
 });
 
 export default BalanceSheetScreen;

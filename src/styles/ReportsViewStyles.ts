@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     color: '#2d3436',
   },
   note: {
@@ -202,6 +202,7 @@ logo: {
   },
   filters: {
     marginBottom: 16,
+    backgroundColor: '#fff',
   },
   searchBox: {
     borderWidth: 1,

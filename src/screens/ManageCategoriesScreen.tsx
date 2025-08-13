@@ -11,14 +11,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Category } from '../models/Category';
 import { SubCategory } from '../models/SubCategory';
-import { useFocusEffect } from '@react-navigation/native';
-import { getCategories, saveCategories, addCategory } from '../services/mockDataService';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { saveCategories, addCategory } from '../services/mockDataService';
 import SubcategoryModal from '../components/SubcategoryModal';
 import CategoryModal from '../components/CategoryModal';
+import { useAppData } from '../context/AppDataProvider';
 
 
 const ManageCategoriesScreen = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -31,40 +31,46 @@ const ManageCategoriesScreen = () => {
   const [showSubModal, setShowSubModal] = useState(false);
   const [editingSubcategory, setEditingSubcategory] = useState<SubCategory | null>(null);
 
+  const {
+    persons,
+    categories,
+    transactions,
+    reloadAppData,
+  } = useAppData();
+
+  const isFocused = useIsFocused();
+
   useEffect(() => {
-    loadCategories();
-  }, []);
+    if (isFocused) {
+      reloadCategories();
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     applySearchFilterSort();
   }, [searchText, categories, sortAsc]);
 
-  const loadCategories = async () => {
-    const data = await getCategories();
-    if (data) {
-      setCategories(data);
-    }
+  const reloadCategories = async () => {
+    await reloadAppData();
   };
 
   const handleAddCategory = async (name: string) => {
-    console.log('Inside handleAddCategory');
     try {
-      const newCategory = await addCategory({ name });
-      console.log('Created Category:', newCategory);
-      loadCategories();
+      await reloadAppData();
     } catch (error) {
       console.error('Error creating category:', error);
     }
   };
 
   const handleEditCategory = (name: string) => {
-    console.log('Inside handleEditCategory');
+    //console.log('Inside handleEditCategory');
     if (!editingCategory) return;
     const updated = categories.map((cat) =>
       cat.id === editingCategory.id ? { ...cat, name } : cat
     );
     saveCategories(updated);
     setEditingCategory(null);
+    reloadAppData();
   };
 
   const handleDeleteCategory = (id: string) => {
@@ -75,13 +81,14 @@ const ManageCategoriesScreen = () => {
         onPress: () => {
           const updated = categories.filter((c) => c.id !== id);
           saveCategories(updated);
+          reloadAppData();
         },
         style: 'destructive',
       },
     ]);
   };
 
-  const handleAddSubcategory = (name: string) => {
+  const handleAddSubcategory = async (name: string) => {
     if (!selectedCategory) return;
     const updated = categories.map((cat) =>
       cat.id === selectedCategory.id
@@ -91,7 +98,8 @@ const ManageCategoriesScreen = () => {
         }
         : cat
     );
-    saveCategories(updated);
+    await saveCategories(updated);
+    await reloadAppData();
   };
 
   const handleEditSubcategory = (name: string) => {
@@ -100,13 +108,14 @@ const ManageCategoriesScreen = () => {
       if (cat.id !== selectedCategory.id) return cat;
       return {
         ...cat,
-        subcategories: (cat.subcategories ?? []).map((sub) =>
+        subcategories: (cat.subcategories ?? []).map((sub: SubCategory) =>
           sub.id === editingSubcategory.id ? { ...sub, name } : sub
         ),
       };
     });
     saveCategories(updated);
     setEditingSubcategory(null);
+    reloadAppData();
   };
 
   const handleDeleteSubcategory = (subcategoryId: string) => {
@@ -115,10 +124,11 @@ const ManageCategoriesScreen = () => {
       if (cat.id !== selectedCategory.id) return cat;
       return {
         ...cat,
-        subcategories: (cat.subcategories ?? []).filter((sub) => sub.id !== subcategoryId),
+        subcategories: (cat.subcategories ?? []).filter((sub: SubCategory) => sub.id !== subcategoryId),
       };
     });
     saveCategories(updated);
+    reloadAppData();
   };
 
   const applySearchFilterSort = () => {
@@ -134,7 +144,7 @@ const ManageCategoriesScreen = () => {
     const query = searchText.toLowerCase();
     const result = sorted.filter((cat) => {
       const categoryMatch = cat.name.toLowerCase().includes(query);
-      const subcategoryMatch = cat.subcategories?.some((sub) =>
+      const subcategoryMatch = cat.subcategories?.some((sub: SubCategory) =>
         sub.name.toLowerCase().includes(query)
       );
       return categoryMatch || subcategoryMatch;
@@ -151,7 +161,7 @@ const ManageCategoriesScreen = () => {
           <Text style={styles.title}> Menu Categories</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={loadCategories} style={styles.iconButton}>
+          <TouchableOpacity onPress={reloadCategories} style={styles.iconButton}>
             <Ionicons name="refresh" size={22} color="#e6f0ff" />
           </TouchableOpacity>
         </View>

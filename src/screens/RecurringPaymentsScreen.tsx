@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,39 +12,41 @@ import { Ionicons } from '@expo/vector-icons';
 import { RecurringPayment } from '../models/RecurringPayment';
 import RecurringPaymentModal from '../components/RecurringPaymentModal';
 import uuid from 'react-native-uuid';
-import { getAllRecurringPayments, saveRecurringPayments } from '../services/mockDataService';
+import { saveRecurringPayments } from '../services/mockDataService';
+import { useAppData } from '../context/AppDataProvider';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 
 const RecurringPaymentsScreen = () => {
-  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
   const [filteredList, setFilteredList] = useState<RecurringPayment[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<RecurringPayment | null>(null);
   const [searchText, setSearchText] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const {
+    recurringPayments,
+    reloadAppData,
+  } = useAppData();
 
-   const reloadData = () => {
-      loadData();
-      console.log("Reloading recurring payment data...");
-    };
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      reloadData();
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     applyFilterAndSearch();
   }, [recurringPayments, searchText, filterType]);
 
-  const loadData = async () => {
-    const data = await getAllRecurringPayments();
-    if (data) setRecurringPayments(data);
+  const reloadData = async () => {
+    reloadAppData();
   };
 
   const saveData = async (updated: RecurringPayment[]) => {
     saveRecurringPayments(updated);
   };
-
-
 
   const handleAdd = (data: Partial<RecurringPayment>) => {
     const newItem: RecurringPayment = {
@@ -110,17 +112,17 @@ const RecurringPaymentsScreen = () => {
 
   return (
     <View style={styles.container}>
-              <View style={styles.header}>
-                 <View style={styles.headerLeft}>
-                    <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
-                    <Text style={styles.title}>Manage Recurring Payments</Text>
-                  </View>
-                  <View style={styles.headerRight}>
-                    <TouchableOpacity onPress={reloadData} style={styles.iconButton}>
-                      <Ionicons name="refresh" size={22} color="#e6f0ff" />
-                    </TouchableOpacity>
-                  </View>           
-              </View> 
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+          <Text style={styles.title}>Manage Recurring Payments</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={reloadData} style={styles.iconButton}>
+            <Ionicons name="refresh" size={22} color="#e6f0ff" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
 
       <TextInput
@@ -218,23 +220,23 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     color: '#222',
   },
-   header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#0984e3',
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  marginBottom: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 6, // For Android
-  // Optional: Use gradient background with expo-linear-gradient
-},
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0984e3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
+  },
   heading: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -242,36 +244,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#2c3e50',
   },
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-headerRight: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10, // Optional for spacing (or use marginRight)
-},
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10, // Optional for spacing (or use marginRight)
+  },
 
-logo: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-  marginRight: 8,
-},
+  logo: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginRight: 8,
+  },
   iconButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#007bff',
-  paddingVertical: 6,
-  paddingHorizontal: 12,
-  borderRadius: 6,
-},
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007bff',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
   input: {
     backgroundColor: '#e9f0ff',
     padding: 10,

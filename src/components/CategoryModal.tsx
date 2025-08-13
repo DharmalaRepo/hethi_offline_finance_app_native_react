@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { useAppData } from '../context/AppDataProvider';
 
 interface CategoryModalProps {
   visible: boolean;
@@ -18,6 +19,18 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
 }) => {
   const [name, setName] = useState('');
 
+  const {
+      persons,
+      categories,
+      subcategories,
+      accounts,
+      transactions,
+      recurringPayments,
+      monthlyOpeningBalance,
+      monthlyClosingBalance,
+      reloadAppData,
+    } = useAppData();
+
   useEffect(() => {
     setName(defaultName);
   }, [defaultName, visible]);
@@ -26,7 +39,8 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
     if (name.trim()) {
       onSave(name.trim());
       setName('');
-      onClose();
+      reloadAppData();
+      //onClose();
     }
   };
 

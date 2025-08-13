@@ -1,16 +1,11 @@
+// PersonModal.tsx
 import React, { useEffect, useState } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { Modal, View, TextInput, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { Account } from '../models/Account';
+import { Ionicons } from '@expo/vector-icons';
+import uuid from 'react-native-uuid';
 
-interface PersonModalProps {
+interface Props {
   visible: boolean;
   onClose: () => void;
   onSave: (name: string) => void;
@@ -18,110 +13,65 @@ interface PersonModalProps {
   defaultName?: string;
 }
 
-const PersonModal: React.FC<PersonModalProps> = ({
+const PersonModal = ({
   visible,
   onClose,
   onSave,
-  isEdit = false,
-  defaultName = '',
-}) => {
+  isEdit,
+  defaultName,
+}: Props) => {
   const [name, setName] = useState('');
+  const [accountModalVisible, setAccountModalVisible] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
   useEffect(() => {
-    setName(defaultName);
+    setName(defaultName || '');
   }, [defaultName]);
 
-  const handleSubmit = () => {
-    if (name.trim()) {
-      onSave(name.trim());
-      setName('');
-    }
-  };
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <KeyboardAvoidingView
-        style={styles.centeredView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.modalView}>
-          <Text style={styles.title}>{isEdit ? 'Edit Person' : 'Add Person'}</Text>
+      <View style={styles.overlay}>
+        <View style={styles.container}>
+          <Text style={styles.title}>{isEdit ? 'Edit' : 'Add'} Person</Text>
+
           <TextInput
-            placeholder="Enter name"
+            placeholder="Person name"
             value={name}
             onChangeText={setName}
             style={styles.input}
-            placeholderTextColor="#999"
           />
 
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-              <Text style={styles.buttonText}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={() => onSave(name)} style={styles.saveButton}>
+            <Text style={styles.saveText}>{isEdit ? 'Update' : 'Add'} Person</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
+            <Text style={styles.cancelText}>Close</Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
 
-const styles = StyleSheet.create({
-  centeredView: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,50,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalView: {
-    backgroundColor: '#ffffff',
-    padding: 24,
-    borderRadius: 16,
-    width: '90%',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1A73E8',
-    marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#1A73E8',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-    marginBottom: 20,
-    color: '#333',
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  button: {
-    backgroundColor: '#1A73E8',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  cancelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  cancelText: {
-    color: '#555',
-  },
-});
-
 export default PersonModal;
+
+const styles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000aa' },
+  container: { backgroundColor: 'white', padding: 20, borderRadius: 10, width: '90%' },
+  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+  input: { borderWidth: 1, borderRadius: 6, padding: 10, marginBottom: 10 },
+  saveButton: { backgroundColor: '#007AFF', padding: 10, borderRadius: 6, alignItems: 'center' },
+  saveText: { color: 'white' },
+  subHeading: { fontSize: 16, marginTop: 20, fontWeight: '600' },
+  accountItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6 },
+  accountText: { fontSize: 14 },
+  noteText: { fontSize: 12, color: 'gray' },
+  actions: { flexDirection: 'row', gap: 10 },
+  addAccountButton: { marginTop: 10, padding: 8, backgroundColor: '#cdeaff', borderRadius: 6 },
+  addAccountText: { textAlign: 'center', color: '#007AFF' },
+  cancelButton: { marginTop: 12, padding: 10, borderRadius: 6, backgroundColor: '#ccc' },
+  cancelText: { textAlign: 'center' },
+  emptyText: { fontStyle: 'italic', textAlign: 'center', marginTop: 6 },
+});

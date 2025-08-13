@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   ScrollView,
+  Switch,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
@@ -34,6 +35,8 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
   const [personId, setPersonId] = useState(transaction.personId);
   const [accountId, setAccountId] = useState(transaction.accountId);
   const [type, setType] = useState<'income' | 'expense'>(transaction.type);
+  const [isOptional, setIsOptional] = useState(transaction.isOptional);
+  const [isReversableTransaction, setIsReversableTransaction] = useState(transaction.isReversible);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<Category['subcategories']>([]);
@@ -77,6 +80,8 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
       setSubCategoryId(transaction.subCategoryId || '');
       setPersonId(transaction.personId || '');
       setAccountId(transaction.accountId || '');
+      setIsReversableTransaction(!!transaction.isReversible);
+      setIsOptional(!!transaction.isOptional);
     }
   }, [transaction, visible]);
 
@@ -92,6 +97,8 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
       accountId,
       type,
       updatedAt: new Date().toISOString(),
+      isOptional,
+      isReversible:isReversableTransaction
     };
     onSave(updated);
   };
@@ -214,6 +221,22 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               ))}
             </Picker>
 
+            <View style={styles.row}>
+              <Text>Reversible</Text>
+              <Switch
+                value={isReversableTransaction}
+                onValueChange={setIsReversableTransaction}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <Text>Optional</Text>
+              <Switch
+                value={isOptional}
+                onValueChange={setIsOptional}
+              />
+            </View>
+
             <View style={styles.actions}>
               <TouchableOpacity onPress={handleUpdate} style={styles.saveButton}>
                 <Text style={styles.btnText}>Update</Text>
@@ -236,24 +259,27 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: '#f9f9f9',
     padding: 20,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: '90%',
   },
   header: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
+    color: '#0984e3',
   },
   input: {
     borderWidth: 1,
-    borderColor: 'black',
+    borderColor: '#dfe6e9',
+    backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 14,
+    fontSize: 14,
   },
   dateLabel: {
     fontSize: 16,
@@ -263,68 +289,83 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 20,
   },
   saveButton: {
-    backgroundColor: '#28a745',
-    padding: 12,
+    backgroundColor: '#0984e3',
+    paddingVertical: 12,
     borderRadius: 8,
     flex: 1,
-    marginRight: 5,
+    marginRight: 6,
   },
   cancelButton: {
-    backgroundColor: '#dc3545',
-    padding: 12,
+    backgroundColor: '#d63031',
+    paddingVertical: 12,
     borderRadius: 8,
     flex: 1,
-    marginLeft: 5,
+    marginLeft: 6,
   },
   btnText: {
-    color: 'black',
-    fontWeight: 'bold',
+    color: '#fff',
+    fontWeight: '600',
     textAlign: 'center',
+    fontSize: 16,
   },
   rowToggle: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   toggleButton: {
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderRadius: 6,
-    minWidth: 100,
+    borderRadius: 8,
+    borderColor: '#ccc',
+    minWidth: 110,
     alignItems: 'center',
   },
   selectedToggle: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#0984e3',
+    borderColor: '#0984e3',
   },
   toggleText: {
-    color: '#000',
+    color: '#333',
+    fontSize: 14,
   },
   selectedToggleText: {
     color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
   },
   rowContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    datePicker: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: '#ccc',
-      borderRadius: 8,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      backgroundColor: '#fff',
-    },
-    dateText: {
-      fontSize: 14,
-      color: '#333',
-    },
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  datePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#dfe6e9',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    flex: 1,
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#2d3436',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
 });
 
 export default TransactionEditModal;

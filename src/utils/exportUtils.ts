@@ -40,7 +40,6 @@ export const generatePDF = async (html: string, filename: string) => {
     from: uri,
     to: pdfPath,
   });
-
-  console.log('PDF saved at:', pdfPath); 
+  
   return pdfPath;
 };

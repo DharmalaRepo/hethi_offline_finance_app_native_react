@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, KeyboardAvoidingView, Image } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { getAppSettings, getPin, clearPinAttempts, getPinFailedAttempts, getPinLockUntil, setPinFailedAttempts, setPinLockUntil, validatePin } from '../services/mockDataService';
+import { getAppSettings_, getPin, clearPinAttempts, getPinFailedAttempts, getPinLockUntil, setPinFailedAttempts, setPinLockUntil, validatePin } from '../services/mockDataService';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { navigationRef } from '../navigation/NavigationService';
 import { showToast } from '../utils/toastUtils'; // ✅ Correct usage for named export
@@ -15,9 +15,9 @@ import {
   NativeStackNavigationProp,
 } from '@react-navigation/native-stack';
 import type { RootStackParamList, MoreStackParamList } from '../navigation/routes';
-
+//console.log('Inside LockScreen mm');
 const LockScreen = () => {
-
+  //console.log('Inside LockScreen');
   const [enteredPin, setEnteredPin] = useState('');
   const [settings, setSettings] = useState<any>({});
   const [storedPin, setStoredPin] = useState('');
@@ -26,7 +26,7 @@ const LockScreen = () => {
 
   useEffect(() => {
     (async () => {
-      const appSettings = await getAppSettings();
+      const appSettings = await getAppSettings_();
       const pin = await getPin();
       setSettings(appSettings || {});
       setStoredPin(pin || '');
@@ -34,15 +34,17 @@ const LockScreen = () => {
         handleBiometricAuth();
       }
     })();
+
   }, []);
 
   const handleUnlock = async () => {
+    //console.log('Inside handleUnlock');
     const lockUntil = await getPinLockUntil();
     const now = Date.now();
 
     if (lockUntil && now < lockUntil) {
       const secondsLeft = Math.ceil((lockUntil - now) / 1000);
-      console.log(`Seconds left: ${secondsLeft}`);
+      //console.log(`Seconds left: ${secondsLeft}`);
       showToast('error', `App is temporarily locked. Try again in ${secondsLeft} seconds.`);
       ToastAndroid.show(`App is temporarily locked. Try again in ${secondsLeft} seconds.`, ToastAndroid.SHORT);
       return;
@@ -99,6 +101,8 @@ const LockScreen = () => {
       }
     }
   };
+
+
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.select({ ios: 'padding' })}>

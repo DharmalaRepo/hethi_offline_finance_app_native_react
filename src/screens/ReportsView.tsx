@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 
 import { ScrollView } from 'react-native-gesture-handler';
-import RNPickerSelect from 'react-native-picker-select';
-import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import { Picker } from '@react-native-picker/picker';
 import * as Sharing from 'expo-sharing'; // If using Expo
 import * as FileSystem from 'expo-file-system';
@@ -10,30 +8,24 @@ import * as Print from 'expo-print';
 import { Ionicons } from '@expo/vector-icons'; // Or react-native-vector-icons
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import {
-  View, Text, TextInput, TouchableOpacity, ActivityIndicator, FlatList, Image, Modal, Pressable
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image, Modal, Pressable
 } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
-import { getAllTransactions, getCategories, getAllSubCategories, getAllPersons } from '../services/mockDataService';
 import { Transaction } from '../models/Transaction';
-import { Category } from '../models/Category';
-import { SubCategory } from '../models/SubCategory';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import styles from '../styles/ReportsViewStyles';
-import { Switch, StyleSheet } from 'react-native';
+import { Switch } from 'react-native';
 import { getTransactionsForMonth } from '../services/mockDataService';
 import { useAppContext } from '../context/AppContext';
 import YearlySummaryExportModal from '../components/YearlySummaryExportModal';
-import { Person } from '../models/Person';
+import { useAppData } from '../context/AppDataProvider';
+import { useIsFocused } from '@react-navigation/native';
 
 const screenWidth = Dimensions.get('window').width;
 
 const ReportsView = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
-  const [persons, setPersons] = useState<Person[]>([]);
   const [month, setMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
@@ -43,6 +35,15 @@ const ReportsView = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showYearlyExport, setShowYearlyExport] = useState(false);
   const [showTxnTable, setShowTxnTable] = useState(false);
+
+  const {
+    persons,
+    categories,
+    subcategories,
+    accounts,
+    transactions,
+    reloadAppData,
+  } = useAppData();
 
   const chartColors = [
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
@@ -58,28 +59,18 @@ const ReportsView = () => {
     '2025-09', '2025-10', '2025-11', '2025-12',
   ];
 
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isFocused) {
+      console.log('TransactionsScreen is focused');
+      reloadReports();
+    }
+  }, [isFocused]);
 
-  const reloadReports = () => {
-    fetchData();
-    console.log("Reloading Reports...");
-  };
 
-  const fetchData = async () => {
-    setLoading(true);
-
-    const txns = await getAllTransactions();
-    const cats = await getCategories();
-    const subs = await getAllSubCategories();
-    const pers = await getAllPersons();
-    setTransactions(txns);
-    setCategories(cats);
-    setSubcategories(subs); 
-    setPersons(pers)// ✅ Save it
-    setLoading(false);
+  const reloadReports = async () => {
+    await reloadAppData();
   };
 
   useEffect(() => {
@@ -196,19 +187,6 @@ const ReportsView = () => {
     }
   };
 
-  const getColor = (index: number) => {
-    const defaultColors = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f'];
-    return defaultColors[index % defaultColors.length];
-  };
-
-  const getCategoryName = (id: string) =>
-    categories.find(cat => cat.id === id)?.name || 'Unknown';
-
-  const getSubCategoryName = (catId: string, subId: string) =>
-    categories
-      .find(cat => cat.id === catId)
-      ?.subcategories?.find(sub => sub.id === subId)?.name || '';
-
   const summary = filteredTxns.reduce(
     (acc, txn) => {
       if (txn.type === 'income') acc.income += txn.amount;
@@ -232,35 +210,6 @@ const ReportsView = () => {
     legendFontColor: '#333',
     legendFontSize: 12
   }));
-
-  const pieData = categories.map((cat, index) => {
-    const catTxns = filteredTxns.filter(t => t.categoryId === cat.id);
-    const amount = catTxns.reduce((sum, t) => sum + t.amount, 0);
-
-    return {
-      name: cat.name,
-      value: amount,
-      color: getColor(index),
-      legendFontColor: '#000',
-      legendFontSize: 12,
-    };
-  }).filter(d => d.value > 0);
-
-  const renderTransaction = ({ item }: { item: Transaction }) => {
-    const cat = categories.find(c => c.id === item.categoryId)?.name || 'Unknown';
-    return (
-      <View style={styles.txnRow}>
-        <Text>{item.date}</Text>
-        <Text>{item.type.toUpperCase()} - ₹{item.amount}</Text>
-        <Text>{cat}</Text>
-        <Text>{item.note}</Text>
-      </View>
-    );
-  };
-
-
-
-
 
   const calculateSummary = (txns: Transaction[]) => {
     const income = txns.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
@@ -342,7 +291,7 @@ const ReportsView = () => {
       />
 
       {/* Summary */}
-      <View style={styles.card}>
+      <View style={styles.tableContainer}>
         <Text>Total Income: {showSensitiveData ? `₹ ${summary.income}` : '₹ ****'}</Text>
         <Text>Total Expense: {showSensitiveData ? `₹ ${summary.expense}` : '₹ ****'}</Text>
         <Text style={{ fontWeight: 'bold' }}>Total Savings: {showSensitiveData ? `₹ ${summary.savings}` : '₹ ****'}</Text>
@@ -506,9 +455,8 @@ const ReportsView = () => {
               <View style={styles.tableContainer}>
                 {/* Table Headers */}
                 <View style={styles.tableRowHeader}>
-                  <Text style={styles.tableCellHeader}>Date</Text>
-                  <Text style={styles.tableCellHeader}>Category</Text>
-                  <Text style={styles.tableCellHeader}>Person</Text>
+                  <Text style={styles.tableCellHeader}>Category/Sub</Text>
+                  <Text style={styles.tableCellHeader}>Person/Account</Text>
                   <Text style={styles.tableCellHeader}>Amount</Text>
                 </View>
 
@@ -518,13 +466,14 @@ const ReportsView = () => {
                     categories.find(cat => cat.id === txn.categoryId)?.name || txn.categoryId;
                   const subcategoryName =
                     subcategories.find(sub => sub.id === txn.subCategoryId)?.name || txn.subCategoryId;
-                    const pesonName =
+                  const pesonName =
                     persons.find(per => per.id === txn.personId)?.name || '';
+                  const accountName =
+                    accounts.find(acc => acc.id === txn.accountId)?.paymentMode || '';
                   return (
                     <View key={txn.id} style={styles.tableRow}>
-                      <Text style={styles.tableCell}>{txn.date}</Text>
                       <Text style={styles.tableCell}>{categoryName}/{subcategoryName}</Text>
-                      <Text style={styles.tableCell}>{pesonName}</Text>
+                      <Text style={styles.tableCell}>{pesonName}/{accountName}</Text>
                       <Text
                         style={[
                           styles.tableCell,

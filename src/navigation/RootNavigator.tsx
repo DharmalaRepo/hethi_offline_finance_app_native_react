@@ -7,7 +7,7 @@ import LockScreen from '../screens/LockScreen'; // adjust if needed
 import { preloadConfigData } from '../utils/configUtils';
 import { useThemeContext } from '../components/ThemeContext';
 import { RootStackParamList } from './routes';
-import { getAppSettings } from '../services/mockDataService';
+import { getAppSettings_ } from '../services/mockDataService';
 import { useAutoLock } from '../hooks/useAutoLock';
 
 const { width } = Dimensions.get('window');
@@ -24,7 +24,7 @@ const RootNavigator = () => {
     preloadConfigData();
 
     const checkPinEnabled = async () => {
-      const settings = await getAppSettings();
+      const settings = await getAppSettings_();
       if (settings.pinEnabled) {
         setInitialRoute('LockScreen');
       } else {

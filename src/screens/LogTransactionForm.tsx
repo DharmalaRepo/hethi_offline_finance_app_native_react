@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Button,
-  Image, Pressable, Switch
+  Image, Pressable
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Category } from '../models/Category';
@@ -10,8 +10,7 @@ import { Account } from '../models/Account';
 import { SubCategory } from '../models/SubCategory';
 import { Transaction } from '../models/Transaction';
 import {
-  getCategories, getPersons, getAllPersons, getAccounts, addCategory,
-  addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues, addAccountToPerson
+  addCategory, addSubCategory, addPerson, saveTransaction, getFallbackTransactionValues, addAccountToPerson
 } from '../services/mockDataService';
 import { showToast, validateTransactionData, autoDetectFromNotes } from '../utils/transactionUtils';
 import { saveCategories } from '../services/mockDataService';
@@ -20,16 +19,17 @@ import uuid from 'react-native-uuid';
 import { commonStyles } from '../styles/commonStyles';
 import { Checkbox } from 'react-native-paper';
 import { Modal } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { ToastAndroid } from 'react-native';
 import {
   CompositeNavigationProp,
+  useIsFocused,
   useNavigation,
 } from '@react-navigation/native';
 import {
   NativeStackNavigationProp,
 } from '@react-navigation/native-stack';
 import type { RootStackParamList, MoreStackParamList } from '../navigation/routes';
+import { useAppData } from '../context/AppDataProvider';
 
 
 const LogTransactionForm = () => {
@@ -40,14 +40,11 @@ const LogTransactionForm = () => {
   >;
 
   const navigation = useNavigation<DashboardNavigationProp>();
-
   const [modalVisible, setModalVisible] = useState(false);
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
   const [note, setNote] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [persons, setPersons] = useState<Person[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isReversible, setIsReversible] = useState(false);
   const [dueDate, setDueDate] = useState<Date | null>(null);
@@ -77,31 +74,31 @@ const LogTransactionForm = () => {
   const [showAccountList, setShowAccountList] = useState(false);
   const [showAddAccountModal, setShowAddAccountModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
-
-  //const [person, setPerson] = useState<Person | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
 
-  const reloadConfig = async () => {
-    setCategories(await getCategories());
-    setPersons(await getAllPersons());
-  };
+  const {
+    persons,
+    categories,
+    reloadAppData,
+  } = useAppData();
+
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    reloadConfig();
-  }, []);
+    if (isFocused) {
+      reloadConfig();
+    }
+  }, [isFocused]);
+
+  const reloadConfig = async () => {
+    await reloadAppData();
+  };
 
   useEffect(() => {
     setSubCategory(null);
     setSubCategorySearch('');
     setShowSubCategoryList(false);
   }, [category]);
-
-  useEffect(() => {
-    if (!smartSuggestEnabled) {
-      setCategory(null);
-      setSubCategory(null);
-    }
-  }, [smartSuggestEnabled]);
 
   useEffect(() => {
     if (type !== 'expense') {
@@ -142,66 +139,7 @@ const LogTransactionForm = () => {
     if (result.subCategory) setSubCategory(result.subCategory);
   };
 
-  // ✅ PICKER HELPERS
-  const openCategoryPicker = async () => {
-    const name = prompt('Enter new category name');
-    if (!name) return;
-    const newCategory = { id: uuid.v4().toString(), name, subcategories: [] };
-    await addCategory(newCategory);
-    await new Promise(res => setTimeout(res, 100));
-    await reloadConfig();
-    // Re-fetch the saved category with updated ID from AsyncStorage
-    const refreshed = await getCategories();
-    const matched = refreshed.find(cat => cat.name.toLowerCase() === name.toLowerCase());
 
-    if (!matched) {
-      console.warn('Category not found in AsyncStorage:', category?.id);
-      showToast('error', 'Category not available');
-      return;
-    }
-
-
-    if (matched) {
-      setCategory(matched); // ✅ use fresh object that exists in storage
-      setSubCategory(null); // reset subcategory when category changes
-      showToast('success', 'New category added');
-    } else {
-      showToast('error', 'Failed to reload new category');
-    }
-  };
-
-  const openSubCategoryPicker = async () => {
-    if (!category) return;
-
-    const name = prompt('Enter sub-category');
-    if (!name || !name.trim()) return;
-
-    try {
-      const newSub: SubCategory = {
-        id: uuid.v4().toString(),
-        name: name.trim(),
-        categoryId: category.id,
-      };
-
-      await addSubCategory(category.id, newSub);
-
-      // Refresh categories from storage
-      const refreshed = await getCategories();
-      const matched = refreshed.find(cat => cat.id === category.id);
-      if (matched) {
-        setCategory(matched);
-        setSubCategory(
-          (matched.subcategories ?? []).find(sub => sub.id === newSub.id) || null
-        );
-      }
-
-      reloadConfig();
-      showToast('success', 'New sub-category added');
-    } catch (err) {
-      console.error('Failed to add sub-category', err);
-      showToast('error', 'Error adding sub-category');
-    }
-  };
 
 
   const handleDueDateConfirm = (selectedDate: Date) => {
@@ -261,10 +199,11 @@ const LogTransactionForm = () => {
       };
 
       // Step 3: Debug Log
-      //console.log('[SAVE] Transaction object:', JSON.stringify(transaction, null, 2));
+      ////console.log('[SAVE] Transaction object:', JSON.stringify(transaction, null, 2));
 
       // Step 4: Save Transaction
       await saveTransaction(transaction);
+      reloadAppData();
       ToastAndroid.show('Transaction saved successfully!', ToastAndroid.SHORT);
       showToast('success', 'Transaction saved successfully');
       // Step 5: Reset Form
@@ -304,67 +243,10 @@ const LogTransactionForm = () => {
     setIsSettled(prev => !prev);
   };
 
-  const handleInlineAdd = async (label: string, value: string, type: 'category' | 'subcategory' | 'person' | 'account') => {
-    Alert.alert(`Add ${label}`, `Do you want to add "${value}" as new ${label}?`, [
-      {
-        text: 'Cancel',
-        style: 'cancel'
-      },
-      {
-        text: 'Add',
-
-
-        onPress: async () => {
-          if (type === 'category') {
-            const newCat = {
-              id: uuid.v4().toString(),
-              name: value,
-              subcategories: [],
-            };
-            const savedCat = await addCategory(newCat);
-            setCategory(savedCat);
-            reloadConfig();
-            showToast('success', 'Category added');
-          } else if (type === 'subcategory' && category) {
-            const newSub = {
-              id: uuid.v4().toString(),
-              name: value,
-              categoryId: category.id,
-            };
-            const savedSub = await addSubCategory(category.id, newSub);
-            setSubCategory(savedSub);
-            reloadConfig();
-            showToast('success', 'SubCategory added');
-          } else if (type === 'person') {
-            const newPerson = {
-              id: uuid.v4().toString(),
-              name: value,
-            };
-            const savedPerson = await addPerson(newPerson);
-            setSelectedPerson(savedPerson);
-            reloadConfig();
-            showToast('success', 'Person added');
-          } else if (type === 'account') {
-            const newAcc = {
-              id: uuid.v4().toString(),
-              name: value,
-              bankName: 'Unknown',
-              personalName: 'SELF',
-            };
-
-            reloadConfig();
-            showToast('success', 'Account added');
-          }
-        }
-      }
-    ]);
-
-
-  };
 
   return (
     <>
-      <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled">
+      <ScrollView nestedScrollEnabled={true} style={styles.screen} keyboardShouldPersistTaps="handled">
 
         {/* Header with logo and title and bell */}
         <View style={styles.header}>
@@ -529,9 +411,17 @@ const LogTransactionForm = () => {
         {showCategoryList && (
           <View style={{ maxHeight: 200 }}>
             <ScrollView
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={{ paddingVertical: 4 }}
+              style={{
+                maxHeight: 200,
+                borderWidth: 1,
+                borderColor: '#ccc',
+                borderRadius: 6,
+                backgroundColor: '#fff',
+              }}
             >
               {categories
                 .filter((item) =>
@@ -887,8 +777,8 @@ const LogTransactionForm = () => {
                     await addCategory(newCat);
 
                     // Fetch updated categories after save
-                    const updated = await getCategories();
-                    const updatedCat = updated.find(c => c.id === newCat.id);
+
+                    const updatedCat = categories.find(c => c.id === newCat.id);
 
                     if (updatedCat) {
                       setCategory(updatedCat);
@@ -981,9 +871,9 @@ const LogTransactionForm = () => {
                   }
 
                   try {
-                    const allCategories = await getCategories(); // ✅ freshly read
 
-                    const targetCategory = allCategories.find(cat => cat.id === category.id);
+
+                    const targetCategory = categories.find(cat => cat.id === category.id);
 
                     if (!targetCategory) {
                       console.warn('Category not found in AsyncStorage:', category.id);
@@ -1005,17 +895,17 @@ const LogTransactionForm = () => {
                     targetCategory.subcategories.push(newSub);
 
                     // Save updated list
-                    saveCategories(allCategories);
+                    saveCategories(categories);
 
                     // 🔁 Refresh config and update local category state
                     await reloadConfig();
 
-                    const refreshed = await getCategories();
-                    const matched = refreshed.find(cat => cat.id === category.id);
+
+                    const matched = categories.find(cat => cat.id === category.id);
                     if (matched) {
                       setCategory(matched);
                       setSubCategory(
-                        matched.subcategories?.find(sub => sub.id === newSub.id) || null
+                        matched.subcategories?.find((sub: SubCategory) => sub.id === newSub.id) || null
                       );
                     }
 
