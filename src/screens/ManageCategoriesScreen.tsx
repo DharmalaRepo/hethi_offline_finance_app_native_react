@@ -56,6 +56,11 @@ const ManageCategoriesScreen = () => {
 
   const handleAddCategory = async (name: string) => {
     try {
+      const trimmed = name.trim();
+    if (!trimmed) {
+      throw new Error('Category name is required');
+    }
+      await addCategory({ name: trimmed });
       await reloadAppData();
     } catch (error) {
       console.error('Error creating category:', error);

@@ -427,6 +427,7 @@ const LogTransactionForm = () => {
                 .filter((item) =>
                   item.name.toLowerCase().includes(categorySearch.toLowerCase())
                 )
+                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
                 .map((item) => (
                   <TouchableOpacity
                     key={item.id}
@@ -501,6 +502,7 @@ const LogTransactionForm = () => {
                 .filter(item =>
                   item.name.toLowerCase().includes(subCategorySearch.toLowerCase())
                 )
+                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
                 .map(item => (
                   <TouchableOpacity
                     key={item.id}
@@ -572,6 +574,7 @@ const LogTransactionForm = () => {
                 .filter(person =>
                   person.name.toLowerCase().includes(personSearch.toLowerCase())
                 )
+                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
                 .map(person => (
                   <TouchableOpacity
                     key={person.id}
@@ -645,6 +648,7 @@ const LogTransactionForm = () => {
                 .filter(acc =>
                   acc.paymentMode.toLowerCase().includes(accountSearch.toLowerCase())
                 )
+                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
                 .map(acc => (
                   <TouchableOpacity
                     key={acc.id}
