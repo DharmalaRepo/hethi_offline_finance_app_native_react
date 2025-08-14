@@ -824,12 +824,12 @@ export const getFallbackTransactionValues = async ({
   category,
   subCategory,
   selectedPerson,
-  account,
+  selectedAccount,
 }: {
   category?: Category | null;
   subCategory?: SubCategory | null;
   selectedPerson?: Person | null;
-  account?: Account | null;
+  selectedAccount?: Account | null;
 }) => {
   let fallbackCategory: Category | undefined = undefined;
   let fallbackSubCategory: SubCategory | undefined = undefined;

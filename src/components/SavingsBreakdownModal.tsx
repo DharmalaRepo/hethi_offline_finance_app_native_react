@@ -50,7 +50,7 @@ const SavingsBreakdownModal = ({
             Expense: <Text style={{ color: '#e74c3c' }}>₹{totalExpense.toLocaleString()}</Text>
           </Text>
           <Text style={styles.summaryText}>
-            Savings: <Text style={{ color: '#0984e3' }}>₹{savings.toLocaleString()}</Text>
+            Savings: <Text style={{ color: '#0a66e4' }}>₹{savings.toLocaleString()}</Text>
           </Text>
 
           <Text style={styles.sectionTitle}>🔝 Top Income Categories:</Text>
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#0984e3',
+    color: '#0a66e4',
   },
   summaryText: {
     fontSize: 16,
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
   },
   saveBtn: {
-    backgroundColor: '#0984e3',
+    backgroundColor: '#0a66e4',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,

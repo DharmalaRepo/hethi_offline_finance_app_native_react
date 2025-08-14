@@ -17,7 +17,7 @@ import TransactionEditModal from '../components/TransactionEditModal';
 import ExportModal from '../components/ExportModal';
 import { Ionicons } from '@expo/vector-icons'; // Or react-native-vector-icons
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import TransactionListItem from '../components/TransactionListItem';
+import TransactionListItem, { TransactionListHeader } from '../components/TransactionListItem';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Account } from '../models/Account';
 import { useAppContext } from '../context/AppContext';
@@ -27,6 +27,25 @@ import CheckBox from '@react-native-community/checkbox';
 import { useAppData } from '../context/AppDataProvider';
 import { SubCategory } from '../models/SubCategory';
 
+type VisibleCols = {
+  date: boolean;
+  category: boolean;
+  sub: boolean;
+  amount: boolean;   // fixed (always true)
+  person: boolean;
+  account: boolean;
+};
+
+const OPTIONAL_KEYS: Array<keyof VisibleCols> = ['date', 'category', 'sub', 'person', 'account'];
+
+interface ToggleRowProps {
+  value: VisibleCols;
+  onChange: (v: VisibleCols) => void;
+  onClose?: () => void;        // 👈 new
+  autoCloseMs?: number;
+}
+
+type SortKey = 'date' | 'category' | 'subCategory' | 'person' | 'account' | 'amount';
 
 
 export default function TransactionsScreen() {
@@ -39,10 +58,14 @@ export default function TransactionsScreen() {
     startDate: null,
     endDate: null,
   });
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [currentViewDate, setCurrentViewDate] = useState(new Date());
   const [modalVisible, setModalVisible] = useState(false);
   const [categoriesMap, setCategoriesMap] = useState<Record<string, string>>({});
   const [subCategoriesMap, setSubCategoriesMap] = useState<Record<string, string>>({});
-  const [sortColumn, setSortColumn] = useState<string>('date');
+  const [personsMap, setPersonsMap] = useState<Record<string, string>>({});
+  const [accountsMap, setAccountsMap] = useState<Record<string, string>>({});
+  const [sortColumn, setSortColumn] = useState<SortKey>('date');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
@@ -52,6 +75,15 @@ export default function TransactionsScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isCopyMode, setIsCopyMode] = useState(false);
   const [selectedTxns, setSelectedTxns] = useState<string[]>([]);
+
+  const [visibleCols, setVisibleCols] = useState<VisibleCols>(() => ({
+    date: true,
+    category: true,
+    sub: true,
+    amount: true,
+    person: false,
+    account: false,
+  }));
 
   const {
     persons,
@@ -69,9 +101,14 @@ export default function TransactionsScreen() {
     }
   }, [isFocused]);
 
+  useEffect(() => {
+    refilter();
+    // include sort/settings/maps if you want the header sort to live-update too
+  }, [transactions, searchQuery, dateRange.startDate, dateRange.endDate, sortColumn, sortOrder, categoriesMap, subCategoriesMap]);
+
   const reloadTransactions = async () => {
     await reloadAppData();
-    setFiltered(transactions);
+    refilter();
   };
 
   type TransactionsScreenRouteProp = RouteProp<RootStackParamList, 'Transactions'>;
@@ -115,30 +152,32 @@ export default function TransactionsScreen() {
     loadData();
   }, [filters]);
 
-  const personsMap: Record<string, string> = persons.reduce((acc, person) => {
-    acc[person.id] = person.name;
-    return acc;
-  }, {} as Record<string, string>);
-
-  const accountsMap: Record<string, string> = accounts.reduce((acc, account) => {
-    acc[account.id] = account.paymentMode;
-    return acc;
-  }, {} as Record<string, string>);
-
-
-
   const loadCategoryMaps = async () => {
 
     const catMap: Record<string, string> = {};
     const subMap: Record<string, string> = {};
+    const perMap: Record<string, string> = {};
+    const accMap: Record<string, string> = {};
     categories.forEach((cat) => {
       catMap[cat.id] = cat.name;
       cat.subcategories?.forEach((sub: SubCategory) => {
         subMap[sub.id] = sub.name;
       });
     });
+    persons.forEach((per) => {
+      perMap[per.id] = per.name;
+      per.accounts?.forEach((acc: Account) => {
+        accMap[acc.id] = acc.paymentMode;
+      });
+    });
     setCategoriesMap(catMap);
     setSubCategoriesMap(subMap);
+    setPersonsMap(perMap);
+    setAccountsMap(accMap);
+  };
+
+  const refilter = () => {
+    filterTransactions(searchQuery, dateRange.startDate, dateRange.endDate);
   };
 
 
@@ -152,6 +191,44 @@ export default function TransactionsScreen() {
     const sub = category?.subcategories?.find((s: SubCategory) => s.id === subCategoryId);
     return sub?.name || '';
   };
+
+  const getPersonsMap = (personId: string): string => {
+    const person = persons.find((p) => p.id === personId);
+    return person?.name || '';
+  };
+
+  const getAccountsMap = (personId: string, accountId?: string): string => {
+    const person = persons.find((p) => p.id === personId);
+    const account = person?.accounts?.find((a: Account) => a.id === accountId);
+    return account?.paymentMode || '';
+  };
+
+
+  const updateMonth = (direction: 'prev' | 'next') => {
+    const now = new Date();
+    const newDate =
+      direction === 'prev'
+        ? new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() - 1, 1)
+        : new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 1);
+
+    // Prevent going beyond current month
+    if (direction === 'next') {
+      if (newDate.getFullYear() > now.getFullYear() ||
+        (newDate.getFullYear() === now.getFullYear() && newDate.getMonth() > now.getMonth())) {
+        return; // do nothing if trying to go past this month
+      }
+    }
+
+    setCurrentViewDate(newDate);
+
+    const start = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+    const end = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0);
+    setDateRange({ startDate: start, endDate: end });
+    filterTransactions(searchQuery, start, end);
+  };
+
+  const monthLabel = currentViewDate.toLocaleString('default', { month: 'short', year: 'numeric' });
+
   const filterTransactions = (query: string, start: Date | null, end: Date | null) => {
     let results = [...transactions];
     if (query) {
@@ -213,7 +290,7 @@ export default function TransactionsScreen() {
     setFiltered(results);
   };
 
-  const toggleSort = (column: string) => {
+  const toggleSort = (column: SortKey) => {
     if (column === sortColumn) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -230,7 +307,8 @@ export default function TransactionsScreen() {
         text: 'Delete',
         onPress: async () => {
           await deleteTransaction(id);
-          await reloadTransactions();
+          await reloadAppData();
+          refilter();
         },
       },
     ]);
@@ -239,13 +317,68 @@ export default function TransactionsScreen() {
   const handleUpdateTransaction = async (updated: Transaction) => {
     await updateTransaction(updated);
     setIsEditModalVisible(false);
-    await reloadTransactions();
+    await reloadAppData();
+    refilter();
   };
 
   const now = new Date();
   const currentMonthLabel = now.toLocaleString('default', { month: 'short' });
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonthLabel = lastMonthDate.toLocaleString('default', { month: 'short' });
+
+  const LABELS: Record<keyof VisibleCols, string> = {
+    date: 'Date', category: 'Category', sub: 'Sub', person: 'Person', account: 'Account', amount: 'Amount',
+  };
+
+  const OPTIONAL_KEYS: (keyof VisibleCols)[] = ['date', 'category', 'sub', 'person', 'account'];
+
+  const ColumnPickerCard: React.FC<{
+    initial: VisibleCols;
+    onApply: (next: VisibleCols) => void;
+    onCancel: () => void;
+  }> = ({ initial, onApply, onCancel }) => {
+    const [draft, setDraft] = useState<VisibleCols>(initial);
+    const selectedCount = OPTIONAL_KEYS.filter(k => draft[k]).length;
+
+    const toggle = (k: keyof VisibleCols) => {
+      if (k === 'amount') return;                       // fixed
+      const next = !draft[k];
+      if (next && selectedCount >= 4) return;           // max 4 optional
+      if (!next && selectedCount <= 3) return;          // min 3 optional
+      setDraft({ ...draft, [k]: next });
+    };
+
+    return (
+      <View style={styles.pickerCard}>
+        {OPTIONAL_KEYS.map(k => (
+          <View key={k} style={styles.pickerRow}>
+            <CheckBox value={!!draft[k]} onValueChange={() => toggle(k)} />
+            <Text style={styles.pickerLabel}>{LABELS[k]}</Text>
+          </View>
+        ))}
+
+        <View style={styles.pickerRow}>
+          <CheckBox value disabled />
+          <Text style={[styles.pickerLabel, { opacity: 0.7 }]}>Amount (always on)</Text>
+        </View>
+
+        <Text style={styles.pickerHint}>{`${selectedCount}/4 selected (min 3)`}</Text>
+
+        <View style={styles.pickerActions}>
+          <TouchableOpacity onPress={onCancel} style={styles.btnGhost}>
+            <Text>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => onApply(draft)}
+            disabled={selectedCount < 3}
+            style={[styles.btnPrimary, selectedCount < 3 && { opacity: 0.5 }]}
+          >
+            <Text style={styles.btnPrimaryText}>Apply</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -263,6 +396,9 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
           <TouchableOpacity onPress={toggleSensitiveData} style={styles.iconButton}>
             <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={22} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsExportModalVisible(true)} style={styles.iconButton}>
+            <Icon name="share-outline" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -285,38 +421,32 @@ export default function TransactionsScreen() {
             filterTransactions(text, dateRange.startDate, dateRange.endDate);
           }}
         />
-        {/* Current Month */}
-        <TouchableOpacity
-          style={styles.filterOption}
-          onPress={() => {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            setDateRange({ startDate: start, endDate: end });
-            filterTransactions(searchQuery, start, end);
-          }}
-        >
-          <Ionicons name="calendar" size={18} color="#0984e3" />
-          <Text style={styles.filterText}>{currentMonthLabel}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Previous Month */}
+          <TouchableOpacity onPress={() => updateMonth('prev')} style={styles.filterOption}>
+            <Ionicons name="chevron-back" size={20} color="#0a66e4" />
+          </TouchableOpacity>
 
-        {/* Last Month */}
-        <TouchableOpacity
-          style={styles.filterOption}
-          onPress={() => {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const end = new Date(now.getFullYear(), now.getMonth(), 0);
-            setDateRange({ startDate: start, endDate: end });
-            filterTransactions(searchQuery, start, end);
-          }}
-        >
-          <Ionicons name="calendar-outline" size={18} color="#6c5ce7" />
-          <Text style={styles.filterText}>{lastMonthLabel}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setIsExportModalVisible(true)} style={styles.iconBtn}>
-          <Icon name="share-outline" size={24} color="#007bff" />
-        </TouchableOpacity>
+          {/* Current Month Label */}
+          <View style={[styles.filterOption, { paddingHorizontal: 12 }]}>
+            <Ionicons name="calendar" size={18} color="#0a66e4" />
+            <Text style={styles.filterText}>{monthLabel}</Text>
+          </View>
+
+          {/* Next Month (disabled if at current month) */}
+          <TouchableOpacity onPress={() => updateMonth('next')} style={styles.filterOption}>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={
+                currentViewDate.getMonth() === new Date().getMonth() &&
+                  currentViewDate.getFullYear() === new Date().getFullYear()
+                  ? '#ccc' // greyed out if at current month
+                  : '#0a66e4'
+              }
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.dateRow, { flexWrap: 'wrap', rowGap: 6 }]}>
@@ -362,33 +492,50 @@ export default function TransactionsScreen() {
         <TouchableOpacity
           style={styles.filterIconBtn}
           onPress={() => {
-            setDateRange({ startDate: null, endDate: null });
-            filterTransactions(searchQuery, null, null); // fallback
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+            setCurrentViewDate(now); // reset month navigation state
+            setDateRange({ startDate: start, endDate: end });
+
+            filterTransactions(searchQuery, start, end);
           }}
         >
           <Ionicons name="close-circle" size={22} color="red" />
         </TouchableOpacity>
       </View>
 
-      {/* Sort Header */}
-      <View style={styles.headerRow}>
-        {['date', 'category', 'subCategory', 'amount'].map((col) => (
-          <TouchableOpacity key={col} onPress={() => toggleSort(col)} style={styles.headerCell}>
-            <Text style={styles.headerText}>
-              {col === 'subCategory' ? 'SUB-CAT' : col.toUpperCase()}
-              {sortColumn === col ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <View style={styles.headerRow}>
         <Text style={styles.subheading}>Transactions</Text>
 
+    {!bulkDeleteMode && !isCopyMode && (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* …your month nav & export buttons… */}
+
+          <TouchableOpacity
+            onPress={() => setShowColumnPicker(true)}
+            style={{
+              flexDirection: 'row', alignItems: 'center', marginLeft: 8,
+              backgroundColor: '#f1f2f6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8
+            }}
+          >
+            <Ionicons name="options-outline" size={16} color="#0C66E4" />
+            <Text style={{ fontSize: 12, color: 'black', marginLeft: 4 }}>Columns</Text>
+          </TouchableOpacity>
+        </View>
+        )}
+
+        {showColumnPicker && !bulkDeleteMode && !isCopyMode && (
+          <ColumnPickerCard
+            initial={visibleCols}
+            onApply={(next) => { setVisibleCols(next); setShowColumnPicker(false); }}
+            onCancel={() => setShowColumnPicker(false)}
+          />
+        )}
+
         {/* Toggle Copy Mode */}
-        {!bulkDeleteMode && (
-
-
+        {!bulkDeleteMode && !showColumnPicker &&(
           <TouchableOpacity
             onPress={() => {
               setIsCopyMode(!isCopyMode);
@@ -404,19 +551,15 @@ export default function TransactionsScreen() {
                 }}
                 tintColors={{ true: 'green', false: 'gray' }}
               />
-
               <Text style={isCopyMode ? styles.bulkCopyActive : styles.bulkCopyInactive}>
                 Bulk Copy
               </Text>
             </View>
           </TouchableOpacity>
-
-
         )}
 
-
         {/* Toggle Bulk Delete */}
-        {!isCopyMode && (
+        {!isCopyMode && !showColumnPicker  && (
           <TouchableOpacity
             onPress={() => {
               setBulkDeleteMode(!bulkDeleteMode);
@@ -432,23 +575,30 @@ export default function TransactionsScreen() {
                 }}
                 tintColors={{ true: 'red', false: 'gray' }}
               />
-
               <Text style={bulkDeleteMode ? styles.bulkDeleteActive : styles.bulkDeleteInactive}>
                 Bulk Delete
               </Text>
             </View>
           </TouchableOpacity>
         )}
-
       </View>
 
       {/* Transactions List */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
+        ListHeaderComponent={
+          <TransactionListHeader
+            visibleCols={visibleCols}        // your state with amount fixed & 3–4 others
+            sortColumn={sortColumn}
+            sortOrder={sortOrder}
+            onSort={toggleSort}              // your existing sorter
+          />
+        }
+        renderItem={({ item, index }) => (
           <TransactionListItem
             transaction={item}
+            index={index} // 🔹 pass row index
             isCopyMode={isCopyMode}
             isBulkDeleteMode={bulkDeleteMode}
             isSelected={selectedIds.includes(item.id)}
@@ -464,6 +614,9 @@ export default function TransactionsScreen() {
             onDelete={handleDelete}
             categoryName={categoriesMap[item.categoryId] || ''}
             subCategoryName={item.subCategoryId ? subCategoriesMap[item.subCategoryId] : ''}
+            personName={personsMap[item.personId] || ''}
+            accountName={item.accountId ? accountsMap[item.accountId] : ''}
+            visibleCols={visibleCols}
           />
         )}
       />
@@ -639,7 +792,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0984e3',
+    backgroundColor: '#0a66e4',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomLeftRadius: 20,
@@ -696,7 +849,7 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 3,
     paddingHorizontal: 10,
   },
 
@@ -934,4 +1087,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  pickerCard: {
+    marginTop: 8,
+    marginHorizontal: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  pickerLabel: { marginLeft: 8, fontSize: 14, color: '#333' },
+  pickerHint: { marginTop: 4, fontSize: 12, color: '#6b7280' },
+  pickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    gap: 8,
+  },
+  btnGhost: {
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#f3f4f6',
+  },
+  btnPrimary: {
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#0C66E4',
+  },
+  btnPrimaryText: { color: '#fff', fontWeight: '600' },
 });

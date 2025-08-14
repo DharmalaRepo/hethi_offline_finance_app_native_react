@@ -1,171 +1,112 @@
-// balanceSheetUtils.ts
-import { Transaction } from '../models/Transaction';
+// utils/balanceSheetUtils.ts
 import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
 
-export const calculateSummary = (
-  transactions: Transaction[],
-  openingBalances: MonthlyOpeningBalance[],
-  closingBalances: MonthlyClosingBalance[],
-  filters: {
-    year: string;
-    month: string;
-    personId?: string;
-    accountId?: string;
-  }
-) => {
-  const { year, month, personId, accountId } = filters;
-
-  const filterMatch = (entry: any) => {
-    return (
-      entry.year === year &&
-      entry.month === month &&
-      (!personId || entry.personId === personId) &&
-      (!accountId || entry.accountId === accountId)
-    );
-  };
-
-  const filteredOpening = openingBalances.filter(filterMatch);
-  const filteredClosing = closingBalances.filter(filterMatch);
-  const filteredTxns = transactions.filter(txn => {
-    const txnDate = new Date(txn.date);
-    return (
-      txnDate.getFullYear().toString() === year &&
-      (txnDate.getMonth() + 1).toString().padStart(2, '0') === month &&
-      (!personId || txn.personId === personId) &&
-      (!accountId || txn.accountId === accountId)
-    );
-  });
-
-  const totalIncome = filteredTxns
-    .filter(txn => txn.type === 'income')
-    .reduce((sum, txn) => sum + txn.amount, 0);
-
-  const totalExpense = filteredTxns
-    .filter(txn => txn.type === 'expense')
-    .reduce((sum, txn) => sum + txn.amount, 0);
-
-  const openingBalance = filteredOpening.reduce((sum, b) => sum + b.amount, 0);
-  const closingBalance = filteredClosing.reduce((sum, b) => sum + b.amount, 0);
-
-  const difference =
-    closingBalance - (openingBalance + totalIncome - totalExpense);
-
-  return {
-    openingBalance,
-    totalIncome,
-    totalExpense,
-    closingBalance,
-    difference,
-  };
+type Txn = {
+  id: string;
+  date: string;          // ISO or yyyy-mm-dd
+  amount: number;
+  type?: string;         // 'income' | 'expense' | 'credit' | 'debit' | etc.
+  categoryId?: string;
+  subCategoryId?: string;
+  personId?: string;
+  accountId?: string;
 };
 
+const pad2 = (n: number | string) => String(n).padStart(2, '0');
+const ymKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
-export const getUniqueYearsMonths = (transactions: Transaction[]) => {
-  const years = new Set<string>();
-  const months = new Set<string>();
+// ---- FILTERS ---------------------------------------------------------------
 
-  transactions.forEach(txn => {
-    const txnDate = new Date(txn.date);
-    years.add(txnDate.getFullYear().toString());
-    months.add((txnDate.getMonth() + 1).toString().padStart(2, '0'));
-  });
-
-  return {
-    years: Array.from(years).sort(),
-    months: Array.from(months).sort()
-  };
-};
-
-export const getFilteredBalances = <T extends { year: string; month: string; personId: string; accountId: string }>(
-  balances: T[],
-  year: string,
-  month: string,
+export function getFilteredBalances<T extends MonthlyOpeningBalance | MonthlyClosingBalance>(
+  all: T[],
+  yearStr: string,
+  monthStr: string,
   personId?: string,
   accountId?: string
-): T[] => {
-  return balances.filter(b => {
-    return (
-      b.year === year &&
-      b.month === month &&
-      (!personId || b.personId === personId) &&
-      (!accountId || b.accountId === accountId)
-    );
-  });
-};
-
-
-export const getFilteredTransactions = (
-  transactions: Transaction[],
-  year: string,
-  month: string,
-  personId?: string,
-  accountId?: string
-): Transaction[] => {
-  return transactions.filter(txn => {
-    const txnDate = new Date(txn.date);
-    const txnYear = txnDate.getFullYear().toString();
-    const txnMonth = (txnDate.getMonth() + 1).toString().padStart(2, '0');
-
-    return (
-      txnYear === year &&
-      txnMonth === month &&
-      (!personId || txn.personId === personId) &&
-      (!accountId || txn.accountId === accountId)
-    );
-  });
-};
-
-interface PersonAccountSummary {
-  personId: string;
-  totalAmount: number;
-  accounts: {
-    accountId: string;
-    amount: number;
-  }[];
+): T[] {
+  // compare on strings but normalize month padding to be safe
+  const y = String(yearStr);
+  const m = pad2(monthStr);
+  return (all ?? []).filter(b =>
+    String(b.year) === y &&
+    pad2(b.month) === m &&
+    (!personId || b.personId === personId) &&
+    (!accountId || b.accountId === accountId)
+  );
 }
 
-/**
- * Groups balances by person and then by account to be used in Balance Sheet UI.
- */
-export function generatePersonAccountSummary(
-  balances: MonthlyOpeningBalance[] | MonthlyClosingBalance[],
+export function getFilteredTransactions(
+  txns: Txn[],
+  yearStr: string,
+  monthStr: string,
   personId?: string,
   accountId?: string
-): PersonAccountSummary[] {
-  const map: { [personId: string]: { [accountId: string]: number } } = {};
+): Txn[] {
+  const targetYM = `${String(yearStr)}-${pad2(monthStr)}`;
+  return (txns ?? []).filter(t => {
+    const d = new Date(t.date);
+    if (isNaN(d.getTime())) return false;
+    if (ymKey(d) !== targetYM) return false;
+    if (personId && t.personId !== personId) return false;
+    if (accountId && t.accountId !== accountId) return false;
+    return true;
+  });
+}
 
-  for (const entry of balances) {
-    if (personId && entry.personId !== personId) continue;
-    if (accountId && entry.accountId !== accountId) continue;
+// ---- SUMMARIES -------------------------------------------------------------
 
-    if (!map[entry.personId]) {
-      map[entry.personId] = {};
-    }
+// If your data uses other type labels, map them here
+function classifyType(t: Txn): 'income' | 'expense' | 'unknown' {
+  const raw = (t.type ?? '').toString().toLowerCase();
+  if (raw === 'income' || raw === 'credit' || raw === 'cr') return 'income';
+  if (raw === 'expense' || raw === 'debit' || raw === 'dr') return 'expense';
+  // If you want to infer by sign, uncomment:
+  // if (t.amount >= 0) return 'income';
+  // if (t.amount < 0) return 'expense';
+  return 'unknown';
+}
 
-    if (!map[entry.personId][entry.accountId]) {
-      map[entry.personId][entry.accountId] = 0;
-    }
+export function calculateSummary(
+  txns: Txn[],
+  opening: MonthlyOpeningBalance[],
+  closing: MonthlyClosingBalance[],
+  _filter: { year: string; month: string; personId?: string; accountId?: string }
+) {
+  const openingBalance = (opening ?? []).reduce((s, b) => s + (b.amount || 0), 0);
+  const closingBalance = (closing ?? []).reduce((s, b) => s + (b.amount || 0), 0);
 
-    map[entry.personId][entry.accountId] += entry.amount;
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  for (const t of txns ?? []) {
+    const kind = classifyType(t);
+    if (kind === 'income') totalIncome += Number(t.amount) || 0;
+    else if (kind === 'expense') totalExpense += Number(t.amount) || 0;
   }
 
-  const result: PersonAccountSummary[] = [];
+  // difference = Opening + Income - Expense - Closing
+  const difference = openingBalance + totalIncome - totalExpense - closingBalance;
 
-  for (const personId of Object.keys(map)) {
-    const accounts = Object.entries(map[personId]).map(([accountId, amount]) => ({
-      accountId,
-      amount,
-    }));
+  return { openingBalance, totalIncome, totalExpense, closingBalance, difference };
+}
 
-    const totalAmount = accounts.reduce((sum, acc) => sum + acc.amount, 0);
+// (optional) used by your UI sections
+export function generatePersonAccountSummary<T extends MonthlyOpeningBalance | MonthlyClosingBalance>(
+  balances: T[],
+  personId?: string,
+  accountId?: string
+) {
+  const byPerson: Record<string, { personId: string; accounts: { accountId: string; amount: number }[]; totalAmount: number }> = {};
+  for (const b of balances ?? []) {
+    if (personId && b.personId !== personId) continue;
+    if (accountId && b.accountId !== accountId) continue;
 
-    result.push({
-      personId,
-      totalAmount,
-      accounts,
-    });
+    if (!byPerson[b.personId]) {
+      byPerson[b.personId] = { personId: b.personId, accounts: [], totalAmount: 0 };
+    }
+    byPerson[b.personId].accounts.push({ accountId: b.accountId, amount: b.amount });
+    byPerson[b.personId].totalAmount += b.amount;
   }
-
-  return result;
+  return Object.values(byPerson);
 }

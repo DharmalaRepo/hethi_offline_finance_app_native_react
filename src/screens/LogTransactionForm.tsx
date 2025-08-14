@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Button,
-  Image, Pressable
+  Image, Pressable,
+  Platform
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Category } from '../models/Category';
@@ -44,6 +45,7 @@ const LogTransactionForm = () => {
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
+  const [dateLocked, setDateLocked] = useState(false);
   const [note, setNote] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isReversible, setIsReversible] = useState(false);
@@ -74,7 +76,6 @@ const LogTransactionForm = () => {
   const [showAccountList, setShowAccountList] = useState(false);
   const [showAddAccountModal, setShowAddAccountModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
-  const [account, setAccount] = useState<Account | null>(null);
 
   const {
     persons,
@@ -86,6 +87,7 @@ const LogTransactionForm = () => {
 
   useEffect(() => {
     if (isFocused) {
+      setDateLocked(false);
       reloadConfig();
     }
   }, [isFocused]);
@@ -128,7 +130,44 @@ const LogTransactionForm = () => {
 
   const handleDateConfirm = (selectedDate: Date) => {
     setShowDatePicker(false);
+    const today = new Date();
+    // strip time
+    selectedDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate > today) {
+      showToast('error', 'Future date is not allowed');
+      return;
+    }
     setDate(selectedDate);
+  };
+
+  const incrementDateByOne = () => {
+    if (!date) return;
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    next.setHours(0, 0, 0, 0);
+
+    if (next > today) {
+      showToast('warning', 'Cannot move beyond today');
+      return;
+    }
+    setDate(next);
+  };
+
+  const decrementDateByOne = () => {
+    if (!date) return;
+    const prev = new Date(date);
+    prev.setDate(prev.getDate() - 1);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    prev.setHours(0, 0, 0, 0);
+
+    if (prev > today) {
+      showToast('warning', 'Cannot move beyond today');
+      return;
+    }
+    setDate(prev);
   };
 
   // ✅ HANDLE NOTES BLUR TO DETECT CATEGORY/SUBCATEGORY
@@ -143,7 +182,7 @@ const LogTransactionForm = () => {
 
 
   const handleDueDateConfirm = (selectedDate: Date) => {
-    setShowDatePicker(false);
+    setShowDueDatePicker(false);
     setDueDate(selectedDate);
   };
 
@@ -166,7 +205,7 @@ const LogTransactionForm = () => {
         fallbackSubCategory: finalSubCategory,
         fallbackPerson: finalPerson,
         fallbackAccount: finalAccount,
-      } = await getFallbackTransactionValues({ category, subCategory, selectedPerson, account });
+      } = await getFallbackTransactionValues({ category, subCategory, selectedPerson, selectedAccount });
 
       if (!finalCategory) {
         showToast('warning', 'No category selected. Using MISC.');
@@ -187,14 +226,14 @@ const LogTransactionForm = () => {
         categoryId: category?.id ?? finalCategory?.id ?? '',
         subCategoryId: subCategory?.id ?? finalSubCategory?.id ?? '',
         personId: selectedPerson?.id ?? finalPerson?.id ?? '',
-        accountId: account?.id ?? finalAccount?.id ?? '',
+        accountId: selectedAccount?.id ?? finalAccount?.id ?? '',
         note,
         isReversible,
         isOptional,
         dueDate:
           isReversible && dueDate ? dueDate.toISOString().split('T')[0] : undefined,
         fromOrToPersonName: fromOrToPersonName,
-        isSettled: markAsReturned,
+        isSettled,
         createdAt: new Date().toISOString(),
       };
 
@@ -219,12 +258,14 @@ const LogTransactionForm = () => {
   const resetForm = () => {
     setType('expense');
     setAmount('');
-    setDate(new Date());
+    if (!dateLocked) {
+      setDate(new Date());
+    }
     setNote('');
     setCategory(null);
     setSubCategory(null);
     setSelectedPerson(null);
-    setAccount(null);
+    setSelectedAccount(null);
     setIsReversible(false);
     setDueDate(null);
     setFromOrToPersonName('');
@@ -320,19 +361,72 @@ const LogTransactionForm = () => {
             <Text style={commonStyles.label}>Amount</Text>
             <TextInput
               style={commonStyles.input}
-              keyboardType="numeric"
+              keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
               value={amount}
               onChangeText={setAmount}
               placeholder="Enter amount"
             />
           </View>
-
+          {/* Date */}
           {/* Date */}
           <View style={{ flex: 1 }}>
-            <Text style={commonStyles.label}>Date</Text>
-            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={commonStyles.dateBtn}>
-              <Text>{date.toLocaleDateString()}</Text>
-            </TouchableOpacity>
+            <Text style={commonStyles.label}>Date :
+                  {date ? date.toLocaleDateString() : 'Pick a date'}
+                </Text>
+
+            <View style={styles.dateRow}>
+              {/* Date display / picker */}
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                style={[styles.dateField, dateLocked && styles.dateFieldDisabled]}
+                disabled={dateLocked}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Ionicons name="calendar-outline" size={18} color="#2d3436" />                
+              </TouchableOpacity>
+
+              {/* Lock / Unlock */}
+              <TouchableOpacity
+                onPress={() => {
+                  if (!date) {
+                    showToast('warning', 'Select a valid date first');
+                    return;
+                  }
+                  setDateLocked(prev => !prev);
+                }}
+                style={styles.iconBtn}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityLabel={dateLocked ? 'Unlock date' : 'Lock date'}
+              >
+                <Ionicons
+                  name={dateLocked ?  'lock-closed-outline' : 'lock-open-outline'}
+                  size={20}
+                  color={dateLocked ? '#D14343' : '#0C66E4'}
+                />
+              </TouchableOpacity>
+
+              {/* Prev day */}
+              <TouchableOpacity
+                onPress={decrementDateByOne}
+                disabled={!date}
+                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityLabel="Previous day"
+              >
+                <Ionicons name="chevron-back-outline" size={20} color="#2d3436" />
+              </TouchableOpacity>
+
+              {/* Next day */}
+              <TouchableOpacity
+                onPress={incrementDateByOne}
+                disabled={!date}
+                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityLabel="Next day"
+              >
+                <Ionicons name="chevron-forward-outline" size={20} color="#2d3436" />
+              </TouchableOpacity>
+            </View>
+
             <DateTimePickerModal
               isVisible={showDatePicker}
               mode="date"
@@ -692,7 +786,7 @@ const LogTransactionForm = () => {
             {/* Due Date */}
             <Text style={commonStyles.label}>Due Date</Text>
             <TouchableOpacity onPress={() => setShowDueDatePicker(true)} style={commonStyles.dateBtn}>
-              <Text>{dueDate ? new Date(dueDate).toLocaleDateString() : 'Pick a due date'}</Text>
+              <Text>{dueDate ? dueDate.toLocaleDateString() : 'Pick a due date'}</Text>
             </TouchableOpacity>
             <DateTimePickerModal
               isVisible={showDueDatePicker}
@@ -1008,7 +1102,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0984e3',
+    backgroundColor: '#0a66e4',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomLeftRadius: 20,
@@ -1106,7 +1200,7 @@ const styles = StyleSheet.create({
   saveBtn: {
     marginTop: 20,
     padding: 14,
-    backgroundColor: '#007bff',
+    backgroundColor: '#f6f8fc',
     borderRadius: 10,
     alignItems: 'center',
   },
@@ -1163,6 +1257,49 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginVertical: 8,
   },
+  dateRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+
+dateField: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderWidth: 1,
+  borderColor: '#ccc',
+  backgroundColor: '#fff',
+  borderRadius: 8,
+  paddingVertical: 10,
+  paddingHorizontal: 10,
+  minHeight: 40,
+},
+
+dateFieldDisabled: {
+  opacity: 0.7,
+},
+
+dateFieldText: {
+  marginLeft: 8,
+  fontSize: 14,
+  color: '#2d3436',
+},
+
+iconBtn: {
+  width: 40,
+  height: 40,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  backgroundColor: '#fff',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+iconBtnDisabled: {
+  opacity: 0.5,
+},
 });
 
 export default LogTransactionForm;

@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   flexDirection: 'row',
   justifyContent: 'space-between',
   alignItems: 'center',
-  backgroundColor: '#0984e3',
+  backgroundColor: '#0a66e4',
   paddingHorizontal: 16,
   paddingVertical: 12,
   borderBottomLeftRadius: 20,
@@ -299,7 +299,7 @@ sectionTitle: {
   marginBottom: 10,
 },
 button: {
-  backgroundColor: '#0984e3',
+  backgroundColor: '#0a66e4',
   padding: 10,
   borderRadius: 8,
   marginTop: 10,

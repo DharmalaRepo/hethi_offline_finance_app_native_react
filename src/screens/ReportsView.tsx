@@ -414,7 +414,7 @@ const ReportsView = () => {
                 return (
                   <View key={cat.id} style={styles.tableRow}>
                     <Text style={styles.tableCell}>{cat.name}</Text>
-                    <Text style={[styles.tableCell, { color: '#0984e3' }]}>
+                    <Text style={[styles.tableCell, { color: '#0a66e4' }]}>
                       {showSensitiveData ? `₹ ${m1Total}` : '₹ ****'}
                     </Text>
                     <Text style={[styles.tableCell, { color: '#00b894' }]}>
@@ -437,7 +437,7 @@ const ReportsView = () => {
           <Switch
             value={showTxnTable}
             onValueChange={setShowTxnTable}
-            trackColor={{ false: '#ccc', true: '#0984e3' }}
+            trackColor={{ false: '#ccc', true: '#0a66e4' }}
             thumbColor={showTxnTable ? '#fff' : '#fff'}
           />
         </View>

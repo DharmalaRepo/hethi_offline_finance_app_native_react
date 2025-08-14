@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   fullImage: { width: 150, height: 150, marginBottom: 25 },
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#fff' },
   button: {
-    backgroundColor: '#0984e3',
+    backgroundColor: '#0a66e4',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
