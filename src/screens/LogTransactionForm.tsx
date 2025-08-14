@@ -648,7 +648,7 @@ const LogTransactionForm = () => {
                 .filter(acc =>
                   acc.paymentMode.toLowerCase().includes(accountSearch.toLowerCase())
                 )
-                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
+                .sort((a, b) => a.paymentMode.localeCompare(b.paymentMode)) // ✅ sort ascending
                 .map(acc => (
                   <TouchableOpacity
                     key={acc.id}

@@ -15,9 +15,9 @@ import { Picker } from '@react-native-picker/picker';
 import { Transaction } from '../models/Transaction';
 import { Category } from '../models/Category';
 import { Person } from '../models/Person';
-import { Account } from '../models/Account';
-import { getCategories, getPersons, getAccounts } from '../services/mockDataService';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppData } from '../context/AppDataProvider';
+import { useIsFocused } from '@react-navigation/native';
 
 interface Props {
   visible: boolean;
@@ -37,26 +37,27 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
   const [type, setType] = useState<'income' | 'expense'>(transaction.type);
   const [isOptional, setIsOptional] = useState(transaction.isOptional);
   const [isReversableTransaction, setIsReversableTransaction] = useState(transaction.isReversible);
-
-  const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<Category['subcategories']>([]);
-  const [persons, setPersons] = useState<Person[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<Person['accounts']>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  const {
+    persons,
+    categories,
+    reloadAppData,
+  } = useAppData();
+
+  const isFocused = useIsFocused();
+
   useEffect(() => {
-    const fetchData = async () => {
-      const [fetchedCategories, fetchedPersons, fetchedAccounts] = await Promise.all([
-        getCategories(),
-        getPersons(),
-        getAccounts(),
-      ]);
-      setCategories(fetchedCategories);
-      setPersons(fetchedPersons);
-      setAccounts(fetchedAccounts);
-    };
-    fetchData();
-  }, []);
+    if (isFocused) {
+      reloadConfig();
+    }
+  }, [isFocused]);
+
+  const reloadConfig = async () => {
+    await reloadAppData();
+  };
 
   useEffect(() => {
     const selectedCategory = categories.find((cat) => cat.id === categoryId);
@@ -65,10 +66,10 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
   }, [categoryId, categories]);
 
   useEffect(() => {
-      const selectedAccounts = persons.find((per) => per.id === personId);
-      setAccounts(selectedAccounts?.accounts || []);
+    const selectedAccounts = persons.find((per) => per.id === personId);
+    setAccounts(selectedAccounts?.accounts || []);
 
-    }, [personId, persons]);
+  }, [personId, persons]);
 
   useEffect(() => {
     if (transaction && visible) {
@@ -98,22 +99,13 @@ const TransactionEditModal: React.FC<Props> = ({ visible, transaction, onSave, o
       type,
       updatedAt: new Date().toISOString(),
       isOptional,
-      isReversible:isReversableTransaction
+      isReversible: isReversableTransaction
     };
     onSave(updated);
   };
 
 
-  const getCategoryName = (categoryId: string): string => {
-  const category = categories.find((c) => c.id === categoryId);
-  return category?.name || '';
-};
 
-const getSubCategoryName = (categoryId: string, subCategoryId?: string): string => {
-  const category = categories.find((c) => c.id === categoryId);
-  const sub = category?.subcategories?.find((s) => s.id === subCategoryId);
-  return sub?.name || '';
-};
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -138,8 +130,10 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               </TouchableOpacity>
             </View>
 
+            <Text style={styles.fieldLabel}>Amount & Date</Text>
             <View style={styles.rowContainer}>
               {/* Amount Input */}
+
               <TextInput
                 style={[styles.input, { flex: 1, marginRight: 8 }]}
                 value={amount}
@@ -170,13 +164,8 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               />
             )}
 
-            <TextInput
-              style={styles.input}
-              value={note}
-              onChangeText={setNote}
-              placeholder="Note (optional)"
-            />
-
+            
+            <Text style={styles.fieldLabel}>Category</Text>
             <Picker
               selectedValue={categoryId}
               onValueChange={(val) => setCategoryId(val)}
@@ -188,6 +177,7 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               ))}
             </Picker>
 
+            <Text style={styles.fieldLabel}>Subcategory</Text>
             <Picker
               selectedValue={subCategoryId}
               onValueChange={(val) => setSubCategoryId(val)}
@@ -199,6 +189,7 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               ))}
             </Picker>
 
+            <Text style={styles.fieldLabel}>Person</Text>
             <Picker
               selectedValue={personId}
               onValueChange={(val) => setPersonId(val)}
@@ -210,6 +201,7 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
               ))}
             </Picker>
 
+            <Text style={styles.fieldLabel}>Payment Mode</Text>
             <Picker
               selectedValue={accountId}
               onValueChange={(val) => setAccountId(val)}
@@ -238,11 +230,13 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
             </View>
 
             <View style={styles.actions}>
-              <TouchableOpacity onPress={handleUpdate} style={styles.saveButton}>
-                <Text style={styles.btnText}>Update</Text>
-              </TouchableOpacity>
+              
               <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
                 <Text style={styles.btnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleUpdate} style={styles.saveButton}>
+                <Text style={styles.btnText}>Update</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -253,118 +247,151 @@ const getSubCategoryName = (categoryId: string, subCategoryId?: string): string 
 };
 
 const styles = StyleSheet.create({
+  // Backdrop
   modalBackground: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
+
+  // Container / Card
   modalContainer: {
-    backgroundColor: '#f9f9f9',
-    padding: 20,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,      // ↓ tighter padding
+    paddingTop: 12,
+    paddingBottom: 14,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 10,
   },
+
+  // Title
   header: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    fontSize: 18,               // ↓ smaller title
+    fontWeight: '700',
+    marginBottom: 10,           // ↓ tighter spacing
     textAlign: 'center',
-    color: '#0984e3',
+    color: '#0C66E4',
   },
+
+  // Inputs / Pickers share the same compact chrome
   input: {
     borderWidth: 1,
-    borderColor: '#dfe6e9',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
-    fontSize: 14,
-  },
-  dateLabel: {
-    fontSize: 16,
+    borderColor: '#E3E8EF',
+    backgroundColor: '#FAFBFC',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,         // ↓ shorter field
     marginBottom: 10,
-    color: '#007bff',
+    fontSize: 13,               // ↓ smaller text
+    minHeight: 40,              // consistent touch target
   },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  saveButton: {
-    backgroundColor: '#0984e3',
-    paddingVertical: 12,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 6,
-  },
-  cancelButton: {
-    backgroundColor: '#d63031',
-    paddingVertical: 12,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 6,
-  },
-  btnText: {
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
-    fontSize: 16,
-  },
-  rowToggle: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-  },
-  toggleButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: '#ccc',
-    minWidth: 110,
-    alignItems: 'center',
-  },
-  selectedToggle: {
-    backgroundColor: '#0984e3',
-    borderColor: '#0984e3',
-  },
-  toggleText: {
-    color: '#333',
-    fontSize: 14,
-  },
-  selectedToggleText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+
+  // Amount + Date row
   rowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    gap: 8,                     // neat spacing
+    marginBottom: 10,
   },
+
+  // Date "pill" button
   datePicker: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#dfe6e9',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#fff',
+    borderColor: '#E3E8EF',
+    backgroundColor: '#FAFBFC',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    minHeight: 40,
     flex: 1,
   },
   dateText: {
-    fontSize: 14,
-    color: '#2d3436',
+    fontSize: 13,
+    color: '#2D3748',
   },
+
+  // Toggle buttons (Income / Expense)
+  rowToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 8,         // ↓ slimmer
+    borderWidth: 1,
+    borderRadius: 10,
+    borderColor: '#E3E8EF',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+  },
+  selectedToggle: {
+    backgroundColor: '#0C66E4',
+    borderColor: '#0C66E4',
+  },
+  toggleText: {
+    color: '#2D3748',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  selectedToggleText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Switch rows
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 2,
+  },
+
+  // Buttons row
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#0C66E4',
+    paddingVertical: 10,        // ↓ slimmer
+    borderRadius: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#D14343',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: '700',
+    textAlign: 'center',
+    fontSize: 14,               // ↓ smaller
+    letterSpacing: 0.2,
+  },
+
+  // Optional labels (if you decide to add small section labels)
+  fieldLabel: {
+    fontSize: 12,
+    color: '#5A6573',
+    marginBottom: 6,
+    marginLeft: 2,
+    fontWeight: '600',
   },
 });
 
