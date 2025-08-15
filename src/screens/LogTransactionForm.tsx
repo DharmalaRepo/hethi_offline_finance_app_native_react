@@ -61,6 +61,8 @@ const LogTransactionForm = () => {
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
   const [isOptional, setIsOptional] = useState<boolean>(false);
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [useLastTransactiondata, setUseLastTransactionData] = useState<boolean>(false);
   const [smartSuggestEnabled, setSmartSuggestEnabled] = useState(true);
   const [categorySearch, setCategorySearch] = useState('');
   const [showCategoryList, setShowCategoryList] = useState(false);
@@ -88,6 +90,8 @@ const LogTransactionForm = () => {
   useEffect(() => {
     if (isFocused) {
       setDateLocked(false);
+      resetForm();
+      setUseLastTransactionData(false);
       reloadConfig();
     }
   }, [isFocused]);
@@ -107,6 +111,12 @@ const LogTransactionForm = () => {
       setIsOptional(false); // Reset optional when not expense
     }
   }, [type]);
+
+  useEffect(() => {
+    if (!useLastTransactiondata) {
+      resetForm();
+    }
+  }, [useLastTransactiondata]);
 
   useEffect(() => {
     setSelectedAccount(null);
@@ -230,6 +240,7 @@ const LogTransactionForm = () => {
         note,
         isReversible,
         isOptional,
+        isPending,
         dueDate:
           isReversible && dueDate ? dueDate.toISOString().split('T')[0] : undefined,
         fromOrToPersonName: fromOrToPersonName,
@@ -256,24 +267,30 @@ const LogTransactionForm = () => {
 
 
   const resetForm = () => {
-    setType('expense');
-    setAmount('');
-    if (!dateLocked) {
-      setDate(new Date());
+    if (!useLastTransactiondata) {
+      setType('expense');
+      setAmount('');
+      if (!dateLocked) {
+        setDate(new Date());
+      }
+      setNote('');
+      setCategory(null);
+      setSubCategory(null);
+      setSelectedPerson(null);
+      setSelectedAccount(null);
+      setIsReversible(false);
+      setDueDate(null);
+      setFromOrToPersonName('');
+      setMarkAsReturned(false);
+      setShowCategoryList(false);
+      setShowSubCategoryList(false);
+      setNewSubcategoryName('');
+      setShowAddSubcategoryModal(false);
+      setIsOptional(false);
+      setIsPending(false);
+      setSmartSuggestEnabled(true);
+      setUseLastTransactionData(false);
     }
-    setNote('');
-    setCategory(null);
-    setSubCategory(null);
-    setSelectedPerson(null);
-    setSelectedAccount(null);
-    setIsReversible(false);
-    setDueDate(null);
-    setFromOrToPersonName('');
-    setMarkAsReturned(false);
-    setShowCategoryList(false);
-    setShowSubCategoryList(false);
-    setNewSubcategoryName('');
-    setShowAddSubcategoryModal(false);
   };
 
   const handleReversibleToggle = () => {
@@ -287,25 +304,25 @@ const LogTransactionForm = () => {
 
   return (
     <>
-      <ScrollView nestedScrollEnabled={true} style={styles.screen} keyboardShouldPersistTaps="handled">
+      <ScrollView nestedScrollEnabled={true} style={commonStyles.screen} keyboardShouldPersistTaps="handled">
 
         {/* Header with logo and title and bell */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
+        <View style={commonStyles.header}>
+          <View style={commonStyles.headerLeft}>
             <TouchableOpacity onPress={() => setModalVisible(true)}>
-              <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
+              <Image source={require('../../assets/images/icon.png')} style={commonStyles.logo} />
             </TouchableOpacity>
-            <Text style={styles.title}>Log Transaction</Text>
+            <Text style={commonStyles.title}>Log Transaction</Text>
           </View>
           <Modal visible={modalVisible} transparent={true} animationType="fade">
-            <View style={styles.modalContainer}>
-              <Pressable onPress={() => setModalVisible(false)} style={styles.modalBackground}>
-                <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
+            <View style={commonStyles.modalContainer}>
+              <Pressable onPress={() => setModalVisible(false)} style={commonStyles.modalBackground}>
+                <Image source={require('../../assets/images/icon.png')} style={commonStyles.fullImage} resizeMode="contain" />
               </Pressable>
             </View>
           </Modal>
-          <View style={styles.headerRight}>
-            <TouchableOpacity onPress={reloadConfig} style={styles.iconButton}>
+          <View style={commonStyles.headerRight}>
+            <TouchableOpacity onPress={reloadConfig} style={commonStyles.iconButton}>
               <Ionicons name="refresh" size={22} color="#e6f0ff" />
             </TouchableOpacity>
           </View>
@@ -339,17 +356,28 @@ const LogTransactionForm = () => {
           >
             <Text style={commonStyles.toggleText}>Expense</Text>
           </TouchableOpacity>
+        </View>
 
+        <View style={commonStyles.row}>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
+            <Checkbox
+              status={isPending ? 'checked' : 'unchecked'}
+              onPress={() => setIsPending((prev) => !prev)}
+            />
+            <Text>Mark as Pending</Text>
+          </View>
           {type === 'expense' && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
-              <Checkbox
-                status={isOptional ? 'checked' : 'unchecked'}
-                onPress={() => setIsOptional((prev) => !prev)}
-              />
-              <Text>Optional Exp</Text>
-            </View>
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
+                <Checkbox
+                  status={isOptional ? 'checked' : 'unchecked'}
+                  onPress={() => setIsOptional((prev) => !prev)}
+                />
+                <Text>Mark as Optional Exp</Text>
+              </View>
+            </>
           )}
-
         </View>
 
 
@@ -368,19 +396,22 @@ const LogTransactionForm = () => {
             />
           </View>
           {/* Date */}
-          {/* Date */}
           <View style={{ flex: 1 }}>
-            <Text style={commonStyles.label}>Date :
-                  {date ? date.toLocaleDateString() : 'Pick a date'}
-                </Text>
+            <View style={commonStyles.row}><Text style={commonStyles.label}>Date :
+              {date ? date.toLocaleDateString() : 'Pick a date'}
+            </Text>
+              <Text style={commonStyles.label}>Lock
+              </Text>
+            </View>
 
-            <View style={styles.dateRow}>
+
+            <View style={commonStyles.dateRow}>
 
               {/* Prev day */}
               <TouchableOpacity
                 onPress={decrementDateByOne}
                 disabled={!date}
-                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
+                style={[commonStyles.iconBtn, !date && commonStyles.iconBtnDisabled]}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityLabel="Previous day"
               >
@@ -390,17 +421,17 @@ const LogTransactionForm = () => {
               {/* Date display / picker */}
               <TouchableOpacity
                 onPress={() => setShowDatePicker(true)}
-                style={[styles.dateField, dateLocked && styles.dateFieldDisabled]}
+                style={[commonStyles.dateField, dateLocked && commonStyles.dateFieldDisabled]}
                 disabled={dateLocked}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-                <Ionicons name="calendar-outline" size={18} color="#2d3436" />                
+                <Ionicons name="calendar-outline" size={18} color="#2d3436" />
               </TouchableOpacity>
 
               {/* Next day */}
               <TouchableOpacity
                 onPress={incrementDateByOne}
                 disabled={!date}
-                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
+                style={[commonStyles.iconBtn, !date && commonStyles.iconBtnDisabled]}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityLabel="Next day"
               >
@@ -416,19 +447,18 @@ const LogTransactionForm = () => {
                   }
                   setDateLocked(prev => !prev);
                 }}
-                style={styles.iconBtn}
+                style={commonStyles.iconBtn}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityLabel={dateLocked ? 'Unlock date' : 'Lock date'}
               >
                 <Ionicons
-                  name={dateLocked ?  'lock-closed-outline' : 'lock-open-outline'}
+                  name={dateLocked ? 'lock-closed-outline' : 'lock-open-outline'}
                   size={20}
                   color={dateLocked ? '#D14343' : '#0C66E4'}
                 />
               </TouchableOpacity>
 
             </View>
-            
 
             <DateTimePickerModal
               isVisible={showDatePicker}
@@ -477,303 +507,316 @@ const LogTransactionForm = () => {
         )}
 
 
-        {/* Category Label */}
-        <Text style={commonStyles.label}>Category</Text>
+        {/* CATEGORY + SUBCATEGORY side-by-side */}
+        <View style={commonStyles.twoColRow}>
+          {/* ===== Category ===== */}
+          <View style={commonStyles.col}>
+            <Text style={commonStyles.label}>Category</Text>
 
-        {/* Combined Display + Search Input */}
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => {
-            setShowCategoryList(true);
-            setCategorySearch('');
-          }}
-        >
-          <TextInput
-            style={commonStyles.input}
-            value={
-              showCategoryList ? categorySearch : category?.name || ''
-            }
-            placeholder="Select or Add Category"
-            editable={showCategoryList} // Only editable when dropdown is open
-            onChangeText={(text) => setCategorySearch(text)}
-            onBlur={() => {
-              if (!categorySearch.trim()) {
-                setShowCategoryList(false);
-              }
-            }}
-          />
-        </TouchableOpacity>
-
-        {/* Dropdown List: Show only when user is searching */}
-        {showCategoryList && (
-          <View style={{ maxHeight: 200 }}>
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled={true}
-              showsVerticalScrollIndicator={true}
-              contentContainerStyle={{ paddingVertical: 4 }}
-              style={{
-                maxHeight: 200,
-                borderWidth: 1,
-                borderColor: '#ccc',
-                borderRadius: 6,
-                backgroundColor: '#fff',
-              }}
-            >
-              {categories
-                .filter((item) =>
-                  item.name.toLowerCase().includes(categorySearch.toLowerCase())
-                )
-                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
-                .map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={commonStyles.dropdownItem}
-                    onPress={() => {
-                      setCategory(item);
-                      setCategorySearch(item.name);
-                      setShowCategoryList(false);
-                    }}
-                  >
-                    <Text>{item.name}</Text>
-                  </TouchableOpacity>
-                ))}
-
-              {/* Add New Category */}
+            <View style={commonStyles.inputWrap}>
               <TouchableOpacity
-                style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                activeOpacity={1}
                 onPress={() => {
-                  setShowCategoryList(false);
-                  setShowAddCategoryModal(true);
+                  setShowCategoryList(true);
+                  setShowSubCategoryList(false); // close the other
                   setCategorySearch('');
                 }}
               >
-                <Text style={{ fontWeight: 'bold' }}>+ Add New Category</Text>
+                <TextInput
+                  style={commonStyles.input}
+                  value={showCategoryList ? categorySearch : category?.name || ''}
+                  placeholder="Select or Add Category"
+                  editable={showCategoryList}
+                  onChangeText={setCategorySearch}
+                  onBlur={() => {
+                    if (!categorySearch.trim()) setShowCategoryList(false);
+                  }}
+                />
               </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
 
-
-        {/* Subcategory Label */}
-        <Text style={commonStyles.label}>Subcategory</Text>
-
-        {/* Subcategory Input (Display + Search) */}
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => {
-            if (category?.subcategories) {
-              setShowSubCategoryList(true);
-              setSubCategorySearch('');
-            }
-          }}
-        >
-          <TextInput
-            style={commonStyles.input}
-            value={
-              showSubCategoryList ? subCategorySearch : subCategory?.name || ''
-            }
-            placeholder="Select or Add Subcategory"
-            editable={showSubCategoryList} // Editable only when dropdown is open
-            onChangeText={text => {
-              setSubCategorySearch(text);
-              setShowSubCategoryList(true);
-            }}
-            onBlur={() => {
-              if (!subCategorySearch.trim()) {
-                setShowSubCategoryList(false);
-              }
-            }}
-          />
-        </TouchableOpacity>
-
-        {/* Dropdown List */}
-        {showSubCategoryList && category && (
-          <View style={{ maxHeight: 150 }}>
-            <ScrollView
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
-            >
-              {(category.subcategories || [])
-                .filter(item =>
-                  item.name.toLowerCase().includes(subCategorySearch.toLowerCase())
-                )
-                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
-                .map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={commonStyles.dropdownItem}
-                    onPress={() => {
-                      setSubCategory(item);
-                      setSubCategorySearch(item.name);
-                      setShowSubCategoryList(false);
-                    }}
+              {/* Category dropdown */}
+              {showCategoryList && (
+                <View style={commonStyles.dropdown}>
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator
+                    contentContainerStyle={{ paddingVertical: 4 }}
                   >
-                    <Text>{item.name}</Text>
-                  </TouchableOpacity>
-                ))}
+                    {categories
+                      .filter((item) =>
+                        item.name.toLowerCase().includes(categorySearch.toLowerCase())
+                      )
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={commonStyles.dropdownItem}
+                          onPress={() => {
+                            setCategory(item);
+                            setCategorySearch(item.name);
+                            setShowCategoryList(false);
+                            // clear subcategory if category changed
+                            setSubCategory(undefined as any);
+                            setSubCategorySearch('');
+                          }}
+                        >
+                          <Text>{item.name}</Text>
+                        </TouchableOpacity>
+                      ))}
 
-              {/* ➕ Add New Subcategory */}
+                    {/* Add New Category */}
+                    <TouchableOpacity
+                      style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                      onPress={() => {
+                        setShowCategoryList(false);
+                        setShowAddCategoryModal(true);
+                        setCategorySearch('');
+                      }}
+                    >
+                      <Text style={{ fontWeight: 'bold' }}>+ Add New Category</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* ===== Subcategory ===== */}
+          <View style={commonStyles.col}>
+            <Text style={commonStyles.label}>Subcategory</Text>
+
+            <View style={commonStyles.inputWrap}>
               <TouchableOpacity
-                disabled={!category?.subcategories}
-                style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                activeOpacity={1}
                 onPress={() => {
-                  setShowAddSubcategoryModal(true);
-                  setShowSubCategoryList(false);
+                  if (!category?.subcategories) {
+                    return;
+                  }
+                  setShowSubCategoryList(true);
+                  setShowCategoryList(false); // close the other
                   setSubCategorySearch('');
                 }}
               >
-                <Text style={{ fontWeight: 'bold' }}>+ Add New Subcategory</Text>
+                <TextInput
+                  style={[
+                    commonStyles.input,
+                    !category?.subcategories && { opacity: 0.5 },
+                  ]}
+                  value={showSubCategoryList ? subCategorySearch : subCategory?.name || ''}
+                  placeholder="Select or Add Subcategory"
+                  editable={!!category && showSubCategoryList}
+                  onChangeText={(text) => {
+                    setSubCategorySearch(text);
+                    setShowSubCategoryList(true);
+                  }}
+                  onBlur={() => {
+                    if (!subCategorySearch.trim()) setShowSubCategoryList(false);
+                  }}
+                />
               </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
 
-
-        {/* Person */}
-        <Text style={commonStyles.label}>Person Or Paid By</Text>
-
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => {
-            setShowPersonList(true);
-            setPersonSearch('');
-          }}
-        >
-          <TextInput
-            style={commonStyles.input}
-            value={
-              showPersonList ? personSearch : selectedPerson?.name || ''
-            }
-            placeholder="Select or Add Person"
-            editable={showPersonList}
-            onChangeText={(text) => {
-              setPersonSearch(text);
-              setShowPersonList(true);
-            }}
-            onBlur={() => {
-              if (!personSearch.trim()) {
-                setShowPersonList(false);
-              }
-            }}
-          />
-        </TouchableOpacity>
-
-        {showPersonList && (
-          <View style={{ maxHeight: 200 }}>
-            <ScrollView
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
-            >
-              {persons
-                .filter(person =>
-                  person.name.toLowerCase().includes(personSearch.toLowerCase())
-                )
-                .sort((a, b) => a.name.localeCompare(b.name)) // ✅ sort ascending
-                .map(person => (
-                  <TouchableOpacity
-                    key={person.id}
-                    style={commonStyles.dropdownItem}
-                    onPress={() => {
-                      setSelectedPerson(person);
-                      setPersonSearch(person.name);
-                      setShowPersonList(false);
-                    }}
+              {/* Subcategory dropdown */}
+              {showSubCategoryList && category && (
+                <View style={[commonStyles.dropdown, { zIndex: 1002 }]}>
+                  <ScrollView
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator
+                    contentContainerStyle={{ paddingVertical: 4 }}
                   >
-                    <Text>{person.name}</Text>
-                  </TouchableOpacity>
-                ))}
+                    {(category.subcategories || [])
+                      .filter((item) =>
+                        item.name.toLowerCase().includes(subCategorySearch.toLowerCase())
+                      )
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={commonStyles.dropdownItem}
+                          onPress={() => {
+                            setSubCategory(item);
+                            setSubCategorySearch(item.name);
+                            setShowSubCategoryList(false);
+                          }}
+                        >
+                          <Text>{item.name}</Text>
+                        </TouchableOpacity>
+                      ))}
 
-              {/* ➕ Add New Person */}
+                    {/* Add New Subcategory */}
+                    <TouchableOpacity
+                      disabled={!category?.subcategories}
+                      style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                      onPress={() => {
+                        setShowAddSubcategoryModal(true);
+                        setShowSubCategoryList(false);
+                        setSubCategorySearch('');
+                      }}
+                    >
+                      <Text style={{ fontWeight: 'bold' }}>+ Add New Subcategory</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+
+        {/* PERSON + ACCOUNT side-by-side */}
+        <View style={commonStyles.twoColRow}>
+          {/* ===== Person ===== */}
+          <View style={commonStyles.col}>
+            <Text style={commonStyles.label}>Person / Paid By</Text>
+
+            <View style={commonStyles.inputWrap}>
               <TouchableOpacity
-                style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                activeOpacity={1}
                 onPress={() => {
-                  setShowAddPersonModal(true);
-                  setShowPersonList(false);
+                  setShowPersonList(true);
+                  setShowAccountList(false);          // close the other
                   setPersonSearch('');
                 }}
               >
-                <Text style={{ fontWeight: 'bold' }}>+ Add New Person</Text>
+                <TextInput
+                  style={commonStyles.input}
+                  value={showPersonList ? personSearch : selectedPerson?.name || ''}
+                  placeholder="Select or Add Person"
+                  editable={showPersonList}
+                  onChangeText={(text) => {
+                    setPersonSearch(text);
+                    setShowPersonList(true);
+                  }}
+                  onBlur={() => {
+                    if (!personSearch.trim()) setShowPersonList(false);
+                  }}
+                />
               </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
 
-        {/* Account Label */}
-        <Text style={commonStyles.label}>Account Or Paid From</Text>
-
-        {/* Account Input (Display + Search) */}
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => {
-            if (selectedPerson?.accounts) {
-              setShowAccountList(true);
-              setAccountSearch('');
-            }
-          }}
-        >
-          <TextInput
-            style={commonStyles.input}
-            value={
-              showAccountList ? accountSearch : selectedAccount?.paymentMode || ''
-            }
-            placeholder="Select or Add Account"
-            editable={showAccountList}
-            onChangeText={text => {
-              setAccountSearch(text);
-              setShowAccountList(true);
-            }}
-            onBlur={() => {
-              if (!accountSearch.trim()) {
-                setShowAccountList(false);
-              }
-            }}
-          />
-        </TouchableOpacity>
-
-        {/* Dropdown List */}
-        {showAccountList && selectedPerson?.accounts && (
-          <View style={{ maxHeight: 150 }}>
-            <ScrollView
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6 }}
-            >
-              {selectedPerson.accounts
-                .filter(acc =>
-                  acc.paymentMode.toLowerCase().includes(accountSearch.toLowerCase())
-                )
-                .sort((a, b) => a.paymentMode.localeCompare(b.paymentMode)) // ✅ sort ascending
-                .map(acc => (
-                  <TouchableOpacity
-                    key={acc.id}
-                    style={commonStyles.dropdownItem}
-                    onPress={() => {
-                      setSelectedAccount(acc);
-                      setAccountSearch(acc.paymentMode);
-                      setShowAccountList(false);
-                    }}
+              {/* Person dropdown */}
+              {showPersonList && (
+                <View style={commonStyles.dropdown}>
+                  <ScrollView
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ paddingVertical: 4 }}
                   >
-                    <Text>{acc.paymentMode}</Text>
-                  </TouchableOpacity>
-                ))}
+                    {persons
+                      .filter(p =>
+                        p.name.toLowerCase().includes(personSearch.toLowerCase())
+                      )
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(p => (
+                        <TouchableOpacity
+                          key={p.id}
+                          style={commonStyles.dropdownItem}
+                          onPress={() => {
+                            setSelectedPerson(p);
+                            setPersonSearch(p.name);
+                            setShowPersonList(false);
+                            // reset account if person changes
+                            setSelectedAccount(undefined as any);
+                            setAccountSearch('');
+                          }}
+                        >
+                          <Text>{p.name}</Text>
+                        </TouchableOpacity>
+                      ))}
 
-              {/* ➕ Add New Account */}
+                    {/* ➕ Add New Person */}
+                    <TouchableOpacity
+                      style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                      onPress={() => {
+                        setShowAddPersonModal(true);
+                        setShowPersonList(false);
+                        setPersonSearch('');
+                      }}
+                    >
+                      <Text style={{ fontWeight: 'bold' }}>+ Add New Person</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* ===== Account ===== */}
+          <View style={commonStyles.col}>
+            <Text style={commonStyles.label}>Account / Paid From</Text>
+
+            <View style={commonStyles.inputWrap}>
               <TouchableOpacity
-                style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                activeOpacity={1}
                 onPress={() => {
-                  setShowAddAccountModal(true);
-                  setShowAccountList(false);
+                  if (!selectedPerson?.accounts) return;
+                  setShowAccountList(true);
+                  setShowPersonList(false);
                   setAccountSearch('');
                 }}
               >
-                <Text style={{ fontWeight: 'bold' }}>+ Add New Account</Text>
+                <TextInput
+                  style={[
+                    commonStyles.input,
+                    !selectedPerson?.accounts && { opacity: 0.5 },
+                  ]}
+                  value={showAccountList ? accountSearch : selectedAccount?.paymentMode || ''}
+                  placeholder={selectedPerson ? 'Select or Add Account' : 'Select person first'}
+                  editable={!!selectedPerson?.accounts && showAccountList}
+                  onChangeText={(text) => {
+                    setAccountSearch(text);
+                    setShowAccountList(true);
+                  }}
+                  onBlur={() => {
+                    if (!accountSearch.trim()) setShowAccountList(false);
+                  }}
+                />
               </TouchableOpacity>
-            </ScrollView>
+
+              {/* Account dropdown */}
+              {showAccountList && selectedPerson?.accounts && (
+                <View style={[commonStyles.dropdown, { zIndex: 1002 }]}>
+                  <ScrollView
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator
+                    contentContainerStyle={{ paddingVertical: 4 }}
+                  >
+                    {selectedPerson.accounts
+                      .filter(acc =>
+                        acc.paymentMode.toLowerCase().includes(accountSearch.toLowerCase())
+                      )
+                      .sort((a, b) => a.paymentMode.localeCompare(b.paymentMode))
+                      .map(acc => (
+                        <TouchableOpacity
+                          key={acc.id}
+                          style={commonStyles.dropdownItem}
+                          onPress={() => {
+                            setSelectedAccount(acc);
+                            setAccountSearch(acc.paymentMode);
+                            setShowAccountList(false);
+                          }}
+                        >
+                          <Text>{acc.paymentMode}</Text>
+                        </TouchableOpacity>
+                      ))}
+
+                    {/* ➕ Add New Account */}
+                    <TouchableOpacity
+                      style={[commonStyles.dropdownItem, { backgroundColor: '#e6f7ff' }]}
+                      onPress={() => {
+                        setShowAddAccountModal(true);
+                        setShowAccountList(false);
+                        setAccountSearch('');
+                      }}
+                    >
+                      <Text style={{ fontWeight: 'bold' }}>+ Add New Account</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
           </View>
-        )}
+        </View>
 
         {/* Reversible Transaction Toggle */}
         <View style={commonStyles.checkboxRow}>
@@ -786,41 +829,57 @@ const LogTransactionForm = () => {
 
         {isReversible && (
           <>
-            {/* Due Date */}
-            <Text style={commonStyles.label}>Due Date</Text>
-            <TouchableOpacity onPress={() => setShowDueDatePicker(true)} style={commonStyles.dateBtn}>
-              <Text>{dueDate ? dueDate.toLocaleDateString() : 'Pick a due date'}</Text>
-            </TouchableOpacity>
-            <DateTimePickerModal
-              isVisible={showDueDatePicker}
-              mode="date"
-              onConfirm={handleDueDateConfirm}
-              onCancel={() => setShowDueDatePicker(false)}
-            />
+            <View style={commonStyles.twoColRow}>
+              {/* Due Date */}
+              <View style={commonStyles.col}>
+                <Text style={commonStyles.label}>Due Date</Text>
+                <TouchableOpacity
+                  onPress={() => setShowDueDatePicker(true)}
+                  style={commonStyles.dateBtn}
+                >
+                  <Text>
+                    {dueDate ? dueDate.toLocaleDateString() : 'Pick a due date'}
+                  </Text>
+                </TouchableOpacity>
+                <DateTimePickerModal
+                  isVisible={showDueDatePicker}
+                  mode="date"
+                  onConfirm={handleDueDateConfirm}
+                  onCancel={() => setShowDueDatePicker(false)}
+                />
+              </View>
 
-            {/* From/To Person */}
-            <Text style={commonStyles.label}>From / To Person</Text>
-            <TextInput
-              value={fromOrToPersonName}
-              onChangeText={setFromOrToPersonName}
-              placeholder="Enter name involved (optional)"
-              style={styles.input}
-            />
-
-
-            {/* Mark as Returned */}
-            <View style={commonStyles.checkboxRow}>
-              <Checkbox
-                status={isSettled ? 'checked' : 'unchecked'}
-                onPress={handleMarkAsReturnedToggle}
-              />
-              <Text style={commonStyles.label}>Mark as Returned</Text>
+              {/* From/To Person */}
+              <View style={commonStyles.col}>
+                <Text style={commonStyles.label}>From / To Person</Text>
+                <TextInput
+                  value={fromOrToPersonName}
+                  onChangeText={setFromOrToPersonName}
+                  placeholder="Enter name involved (optional)"
+                  style={commonStyles.input}
+                />
+              </View>
             </View>
           </>
         )}
 
+        <View>
+
+
+
+          <View style={commonStyles.checkboxRow}>
+            <Checkbox
+              status={useLastTransactiondata ? 'checked' : 'unchecked'}
+              onPress={() => setUseLastTransactionData((prev) => !prev)}
+            />
+            <Text style={commonStyles.label}>Use these details for next transaction</Text>
+          </View>
+
+        </View>
+
         {/* Action Buttons Row */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+
           {/* Cancel Button */}
           <TouchableOpacity
             onPress={resetForm}
@@ -1084,225 +1143,5 @@ const LogTransactionForm = () => {
   )
 };
 
-
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f6fa',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 30,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginVertical: 8,
-    color: '#222',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#0a66e4',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6, // For Android
-    // Optional: Use gradient background with expo-linear-gradient
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10, // Optional for spacing (or use marginRight)
-  },
-
-  logo: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
-    marginRight: 8,
-  },
-
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-
-  iconButton: {
-    marginLeft: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  toggleBtn: {
-    flex: 1,
-    padding: 12,
-    margin: 4,
-    borderWidth: 1,
-    borderColor: '#007bff',
-    borderRadius: 8,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  activeBtn: {
-    backgroundColor: '#007bff',
-  },
-  toggleText: {
-    color: '#000',
-    fontWeight: '600',
-  },
-  dateBtn: {
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: '#fff',
-  },
-  dropdown: {
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 12,
-  },
-  warningIcon: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: 'orange',
-  },
-  saveBtn: {
-    marginTop: 20,
-    padding: 14,
-    backgroundColor: '#f6f8fc',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-    marginLeft: 4,
-    color: '#2d3436',
-  },
-  quickText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  quickLinks: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 10,
-  },
-  quickCard: {
-    flex: 1,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalBackground: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    width: '90%',
-    height: '90%',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: 8,
-  },
-  dateRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 8,
-},
-
-dateField: {
-  flex: 1,
-  flexDirection: 'row',
-  alignItems: 'center',
-  borderWidth: 1,
-  borderColor: '#ccc',
-  backgroundColor: '#fff',
-  borderRadius: 8,
-  paddingVertical: 10,
-  paddingHorizontal: 10,
-  minHeight: 40,
-},
-
-dateFieldDisabled: {
-  opacity: 0.7,
-},
-
-dateFieldText: {
-  marginLeft: 8,
-  fontSize: 14,
-  color: '#2d3436',
-},
-
-iconBtn: {
-  width: 40,
-  height: 40,
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: '#ccc',
-  backgroundColor: '#fff',
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-iconBtnDisabled: {
-  opacity: 0.5,
-},
-});
 
 export default LogTransactionForm;

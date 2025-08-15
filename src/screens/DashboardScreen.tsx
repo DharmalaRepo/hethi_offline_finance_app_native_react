@@ -37,7 +37,7 @@ const DashboardView: React.FC<Props> = ({
   const navigation = useNavigation<any>();
 
   const { showSensitiveData, toggleSensitiveData } = useAppContext();
-
+  const [logoModalVisible, setLogoModalVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
   const {
@@ -212,11 +212,11 @@ const DashboardView: React.FC<Props> = ({
 
   // ---------------- UI ----------------
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }}>
-
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      {/* App header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <TouchableOpacity onPress={() => setLogoModalVisible(true)}>
             <Image source={require('../../assets/images/icon.png')} style={styles.logo} />
           </TouchableOpacity>
           <Text style={styles.title}>  Dashboard</Text>
@@ -230,13 +230,48 @@ const DashboardView: React.FC<Props> = ({
           </TouchableOpacity>
         </View>
       </View>
-      <Modal visible={modalVisible} transparent={true} animationType="fade">
+
+      {/* Full‑logo modal */}
+      <Modal visible={logoModalVisible} transparent animationType="fade">
         <View style={styles.modalContainer}>
-          <Pressable onPress={() => setModalVisible(false)} style={styles.modalBackground}>
+          <Pressable onPress={() => setLogoModalVisible(false)} style={styles.modalBackground}>
             <Image source={require('../../assets/images/icon.png')} style={styles.fullImage} resizeMode="contain" />
           </Pressable>
         </View>
       </Modal>
+
+      {/* Month selector */}
+      <View style={{ paddingHorizontal: 16, marginTop: 6, marginBottom: 6 }}>
+        <View style={styles.periodRow}>
+          {/* Prev */}
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => shiftPeriod(-1)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-back" size={18} color="#1a3c70" />
+          </TouchableOpacity>
+
+          {/* Current month (opens date picker) */}
+          <TouchableOpacity
+            style={[styles.inputBtn, styles.monthBtn]}
+            onPress={() => setPickerVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="calendar" size={16} color="#1a3c70" />
+            <Text style={styles.inputBtnText}>{periodLabel}</Text>
+          </TouchableOpacity>
+
+          {/* Next (optional: disable if next month would be in the future) */}
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => shiftPeriod(1)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-forward" size={18} color="#1a3c70" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <DateTimePickerModal
         isVisible={pickerVisible}
@@ -252,17 +287,17 @@ const DashboardView: React.FC<Props> = ({
       <View style={styles.kpiRow}>
         <View style={[styles.kpiCard, { borderLeftColor: '#16a34a' }]}>
           <Text style={styles.kpiLabel}>Income</Text>
-          <Text style={[styles.kpiValue, { color: '#16a34a' }]}>+{fmt(income)}</Text>
+          <Text style={[styles.kpiValue, { color: '#16a34a' }]}> {showSensitiveData ? `₹ ${fmt(income)}` : '₹ ****'}  </Text>
         </View>
         <View style={[styles.kpiCard, { borderLeftColor: '#dc2626' }]}>
           <Text style={styles.kpiLabel}>Expense</Text>
-          <Text style={[styles.kpiValue, { color: '#dc2626' }]}>-{fmt(expense)}</Text>
+          <Text style={[styles.kpiValue, { color: '#dc2626' }]}> {showSensitiveData ? `₹ ${fmt(expense)}` : '₹ ****'} </Text>
         </View>
       </View>
       <View style={styles.kpiRow}>
         <View style={[styles.kpiCard, { borderLeftColor: '#1f2937' }]}>
           <Text style={styles.kpiLabel}>Savings</Text>
-          <Text style={styles.kpiValue}>{fmt(savings)}</Text>
+          <Text style={styles.kpiValue}> {showSensitiveData ? `₹ ${fmt(savings)}` : '₹ ****'} </Text>
         </View>
         <View style={[styles.kpiCard, { borderLeftColor: '#0ea5e9' }]}>
           <Text style={styles.kpiLabel}>Savings Rate</Text>
@@ -279,8 +314,10 @@ const DashboardView: React.FC<Props> = ({
             const expH = Math.max(8, Math.round((m.expense / maxBar) * 80));
             return (
               <View key={m.key} style={styles.trendCol}>
-                <View style={[styles.bar, { height: expH, backgroundColor: '#fee2e2' }]} />
-                <View style={[styles.bar, { height: incH, backgroundColor: '#dcfce7', marginTop: 4 }]} />
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                  <View style={[styles.bar, { height: expH, backgroundColor: '#fee2e2', marginRight: 4 }]} />
+                  <View style={[styles.bar, { height: incH, backgroundColor: '#dcfce7' }]} />
+                </View>
                 <Text style={styles.trendLabel}>{m.label}</Text>
               </View>
             );
@@ -310,7 +347,7 @@ const DashboardView: React.FC<Props> = ({
               <View style={styles.catBarWrap}>
                 <View style={[styles.catBarFill, { width: `${Math.min(100, row.pct)}%` }]} />
               </View>
-              <Text style={styles.catAmt}>{fmt(row.amount)}</Text>
+              <Text style={styles.catAmt}>{showSensitiveData ? `₹ ${fmt(row.amount)}` : '₹ ****'} </Text>
             </View>
           ))
         )}
@@ -327,7 +364,7 @@ const DashboardView: React.FC<Props> = ({
         {recentTx.length === 0 ? (
           <Text style={styles.empty}>No transactions this month</Text>
         ) : (
-          recentTx.map((t) => {
+          recentTx.slice(0, 5).map((t) => {
             const isIncome = (t.type || '').toLowerCase() === 'income';
             return (
               <View key={t.id} style={styles.txRow}>
@@ -342,8 +379,7 @@ const DashboardView: React.FC<Props> = ({
                   </Text>
                 </View>
                 <Text style={[styles.txAmt, { color: isIncome ? '#16a34a' : '#dc2626' }]}>
-                  {isIncome ? '+' : '-'}
-                  {fmt2(t.amount || 0)}
+                  {showSensitiveData ? `₹ ${fmt(t.amount || 0)}` : '₹ ****'} 
                 </Text>
               </View>
             );
@@ -397,7 +433,14 @@ const DashboardView: React.FC<Props> = ({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f6f8fc' },
 
-  
+  headerIconBtn: {
+    marginLeft: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 8,
+  },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -466,7 +509,7 @@ const styles = StyleSheet.create({
   // Trend
   trendRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: 120, paddingHorizontal: 6 },
   trendCol: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
-  bar: { width: 18, borderRadius: 6 },
+  bar: { width: 12, borderRadius: 3 },
   trendLabel: { marginTop: 6, fontSize: 11, color: '#475569' },
   legendRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },

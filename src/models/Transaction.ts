@@ -21,4 +21,5 @@ export interface Transaction {
   updatedAt?: string;
   isTestData?: boolean;
   isOptional?: boolean;
+  isPending?: boolean;
 }
