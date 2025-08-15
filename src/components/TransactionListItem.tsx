@@ -126,7 +126,14 @@ const TransactionListItem: React.FC<Props & { index: number }> = ({
         )}
 
 
-        {visibleCols.date && <Text style={styles.cell}>{transaction.date}</Text>}
+        {visibleCols.date && (
+          <Text style={styles.cell}>
+            {new Date(transaction.date).toLocaleDateString('en-US', {
+              day: 'numeric',
+              weekday: 'short'
+            })}
+          </Text>
+        )}
         {visibleCols.category && <Text style={styles.cell}>{categoryName}</Text>}
         {visibleCols.sub && <Text style={styles.cell}>{subCategoryName || ''}</Text>}
         {visibleCols.person && <Text style={styles.cell}>{person}</Text>}

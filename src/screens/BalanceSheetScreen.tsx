@@ -579,7 +579,7 @@ const resolveSubCategoryName = (subCategoryId: string) => {
 
           {/* Person */}
           <View style={{ flex: 1, marginHorizontal: 8 }}>
-            <Text style={styles.label}>Person</Text>
+            <Text style={styles.label}>Person: {selectedPersonId? resolvePersonName(selectedPersonId) : 'ALL'}</Text>
             <View style={styles.pickerWrap}>
               <Ionicons name="person" size={16} color="#1a3c70" style={{ marginRight: 6 }} />
               <Picker
@@ -597,7 +597,7 @@ const resolveSubCategoryName = (subCategoryId: string) => {
 
           {/* Account */}
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Account</Text>
+            <Text style={styles.label}>Account: {selectedAccountId? resolveAccountName(selectedAccountId) : 'ALL'}</Text>
             <View
               style={[
                 styles.pickerWrap,

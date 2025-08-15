@@ -16,10 +16,16 @@ export const commonStyles = StyleSheet.create({
     flex: 1,
   },
 
-  container: {
-    backgroundColor: '#f9fbff',
-    padding: 16,
+  
+container: {
+  flex: 1,
+},
+
+  screen: {
+    padding: 2,
+    flex: 1,
   },
+
 
   content: {
     padding: 16,
@@ -92,23 +98,30 @@ export const commonStyles = StyleSheet.create({
   fullImage: {
     height: '90%',
     width: '90%',
+  }, headerIconBtn: {
+    marginLeft: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 8,
   },
 
-  header: {
-    alignItems: 'center',
-    backgroundColor: '#0a66e4',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    elevation: 6,
+ header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    alignItems: 'center',
+    backgroundColor: '#0a66e4',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
   },
 
   headerLeft: {
@@ -246,12 +259,6 @@ export const commonStyles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-
-  screen: {
-    backgroundColor: '#f5f6fa',
-    flex: 1,
-  },
-
   sectionTitle: {
     color: '#1f2937',
     fontSize: 16,

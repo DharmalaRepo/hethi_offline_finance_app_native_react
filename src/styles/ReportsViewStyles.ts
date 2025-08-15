@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.98)', // semi-transparent white
     flex: 1,
   },
@@ -287,6 +287,55 @@ modalContainer: {
     width: '90%',
     height: '90%',
   },
+  monthPickerCard: {
+  flex: 1,
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  padding: 10,
+  borderWidth: 1,
+  borderColor: '#e5e7eb',
+},
+monthBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  paddingVertical: 12,
+  paddingHorizontal: 10,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#c7d2fe',
+  backgroundColor: '#f8fafc',
+},
+commonBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 1,
+  borderColor: '#e2e8f0',
+  borderRadius: 10,
+  paddingVertical: 12,
+  paddingHorizontal: 10,
+  backgroundColor: '#fff',
+},
+monthBtnText: {
+  color: '#1f2937',
+  fontWeight: '700',
+},
+quickBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+  backgroundColor: '#eef2ff',
+  borderWidth: 1,
+  borderColor: '#dbeafe',
+},
+quickBtnText: {
+  color: '#0a66e4',
+  fontWeight: '700',
+},
 });
 
 export default styles;

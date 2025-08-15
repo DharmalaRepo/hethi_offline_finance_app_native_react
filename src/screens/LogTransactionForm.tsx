@@ -304,9 +304,7 @@ const LogTransactionForm = () => {
 
   return (
     <>
-      <ScrollView nestedScrollEnabled={true} style={commonStyles.screen} keyboardShouldPersistTaps="handled">
-
-        {/* Header with logo and title and bell */}
+      <View style={commonStyles.container}>
         <View style={commonStyles.header}>
           <View style={commonStyles.headerLeft}>
             <TouchableOpacity onPress={() => setModalVisible(true)}>
@@ -897,7 +895,7 @@ const LogTransactionForm = () => {
           </TouchableOpacity>
         </View>
 
-      </ScrollView>
+      </View>
 
       <Modal visible={showAddCategoryModal} transparent animationType="slide">
         <View style={commonStyles.modalContainer}>

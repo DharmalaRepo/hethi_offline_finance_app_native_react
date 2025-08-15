@@ -49,8 +49,20 @@ const ReportsView = () => {
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
   ];
   const [comparisonEnabled, setComparisonEnabled] = useState(false);
-  const [month1, setMonth1] = useState('2025-06');
-  const [month2, setMonth2] = useState('2025-07');
+  const today = new Date();
+  const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+
+
+  // which side are we editing with the date picker?
+  const [activeSide, setActiveSide] = useState<'left' | 'right' | null>(null);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [month1, setMonth1] = useState<string>(
+    `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+  );
+  const [month2, setMonth2] = useState<string>(
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+  );
   const [txns1, setTxns1] = useState<Transaction[]>([]);
   const [txns2, setTxns2] = useState<Transaction[]>([]);
   const monthOptions = [
@@ -68,6 +80,18 @@ const ReportsView = () => {
     }
   }, [isFocused]);
 
+  useEffect(() => {
+    if (comparisonEnabled) setToPrevVsCurrent();
+  }, [comparisonEnabled]);
+
+  useEffect(() => {
+    if (!comparisonEnabled) return;
+    const [y1, m1] = month1.split('-');
+    const [y2, m2] = month2.split('-');
+    getTransactionsForMonth(+y1, +m1 - 1).then(setTxns1);
+    getTransactionsForMonth(+y2, +m2 - 1).then(setTxns2);
+  }, [comparisonEnabled, month1, month2]);
+
 
   const reloadReports = async () => {
     await reloadAppData();
@@ -81,6 +105,30 @@ const ReportsView = () => {
       getTransactionsForMonth(+y2, +m2 - 1).then(setTxns2);
     }
   }, [comparisonEnabled, month1, month2]);
+
+
+
+  // label helper (MMM yyyy)
+  const ymLabel = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1, 1);
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  };
+
+  // set utils
+  const setToPrevVsCurrent = () => {
+    const now = new Date();
+    const p = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    setMonth1(`${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, '0')}`);
+    setMonth2(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const swapMonths = () => {
+    setMonth1((a) => {
+      setMonth2(a);
+      return month2;
+    });
+  };
 
   const filteredTxns = useMemo(() => {
     return transactions.filter(txn => {
@@ -247,41 +295,31 @@ const ReportsView = () => {
         </View>
       </Modal>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        {/* Month Picker Label + Button */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+
+        {/* Month Picker */}
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>Year - Month</Text>
+          <Text style={styles.label}>Select Month</Text>
           <TouchableOpacity
-            onPress={() => setShowDatePicker(true)}
-            style={styles.dateBtn}
+            style={[styles.commonBtn, styles.monthBtn]}
+            onPress={() => { setActiveSide('left'); setShowMonthPicker(true); }}
           >
-            <Text>{month || 'Select Month'}</Text>
+            <Ionicons name="calendar" size={16} color="#1a3c70" />
+            <Text style={styles.monthBtnText}>{ymLabel(month)}</Text>
           </TouchableOpacity>
         </View>
-        <View><Text > ''</Text></View>
 
         {/* Export Button */}
         <View style={{ flex: 1 }}>
           <Text style={styles.label}>Yearly Summary Report</Text>
           <TouchableOpacity
-            style={styles.dateBtn}
+            style={[styles.commonBtn, { justifyContent: 'center' }]}
             onPress={() => setShowYearlyExport(true)}
           >
             <Text style={{ color: 'black' }}>View/Export</Text>
           </TouchableOpacity>
         </View>
-        {/* Date Picker Modal */}
-        <DateTimePickerModal
-          isVisible={showDatePicker}
-          mode="date"
-          onConfirm={(date: Date) => {
-            setShowDatePicker(false);
-            setSelectedDate(date);
-            const selectedMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            setMonth(selectedMonth);
-          }}
-          onCancel={() => setShowDatePicker(false)}
-        />
+
       </View>
 
       <YearlySummaryExportModal
@@ -340,8 +378,6 @@ const ReportsView = () => {
         )}
       </View>
       <View style={styles.tableContainer}>
-        {/* Monthly Comparison */}
-        {/* Toggle */}
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>📊 Enable Monthly Comparison</Text>
           <Switch value={comparisonEnabled} onValueChange={setComparisonEnabled} />
@@ -349,25 +385,56 @@ const ReportsView = () => {
 
         {comparisonEnabled ? (
           <>
-            {/* Month Pickers */}
+            {/* Quick actions */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+              <TouchableOpacity style={styles.quickBtn} onPress={setToPrevVsCurrent}>
+                <Ionicons name="refresh" size={16} color="#0a66e4" />
+                <Text style={styles.quickBtnText}>Set to Last vs Current</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickBtn} onPress={swapMonths}>
+                <Ionicons name="swap-horizontal" size={16} color="#0a66e4" />
+                <Text style={styles.quickBtnText}>Swap</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Month buttons (open calendar) */}
             <View style={styles.monthRow}>
-              <View style={styles.monthPicker}>
+              <View style={styles.monthPickerCard}>
                 <Text style={styles.label}>Month 1</Text>
-                <Picker selectedValue={month1} onValueChange={setMonth1}>
-                  {monthOptions.map(m => (
-                    <Picker.Item key={m} label={m} value={m} />
-                  ))}
-                </Picker>
+                <TouchableOpacity
+                  style={styles.monthBtn}
+                  onPress={() => { setActiveSide('left'); setShowMonthPicker(true); }}
+                >
+                  <Ionicons name="calendar" size={16} color="#1a3c70" />
+                  <Text style={styles.monthBtnText}>{ymLabel(month1)}</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.monthPicker}>
+
+              <View style={styles.monthPickerCard}>
                 <Text style={styles.label}>Month 2</Text>
-                <Picker selectedValue={month2} onValueChange={setMonth2}>
-                  {monthOptions.map(m => (
-                    <Picker.Item key={m} label={m} value={m} />
-                  ))}
-                </Picker>
+                <TouchableOpacity
+                  style={styles.monthBtn}
+                  onPress={() => { setActiveSide('right'); setShowMonthPicker(true); }}
+                >
+                  <Ionicons name="calendar" size={16} color="#1a3c70" />
+                  <Text style={styles.monthBtnText}>{ymLabel(month2)}</Text>
+                </TouchableOpacity>
               </View>
             </View>
+
+            {/* One shared DateTimePickerModal */}
+            <DateTimePickerModal
+              isVisible={showMonthPicker}
+              mode="date"
+              onConfirm={(date: Date) => {
+                setShowMonthPicker(false);
+                const ym = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (activeSide === 'left') setMonth1(ym);
+                if (activeSide === 'right') setMonth2(ym);
+                setActiveSide(null);
+              }}
+              onCancel={() => { setShowMonthPicker(false); setActiveSide(null); }}
+            />
 
             {/* Monthly Summary */}
             <View style={styles.summaryRow}>
@@ -431,65 +498,7 @@ const ReportsView = () => {
           </Text>
         )}
       </View>
-      <View style={styles.tableContainer}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#2d3436' }}>Show Selected Month Transactions</Text>
-          <Switch
-            value={showTxnTable}
-            onValueChange={setShowTxnTable}
-            trackColor={{ false: '#ccc', true: '#0a66e4' }}
-            thumbColor={showTxnTable ? '#fff' : '#fff'}
-          />
-        </View>
-
-
-        {showTxnTable && (
-          <View >
-            {/* Transactions */}
-            <Text style={styles.subheading}>Transactions</Text>
-            {loading ? (
-              <ActivityIndicator size="large" color="#007bff" />
-            ) : filteredTxns.length === 0 ? (
-              <Text style={{ textAlign: 'center', marginVertical: 10 }}>No transactions found</Text>
-            ) : (
-              <View style={styles.tableContainer}>
-                {/* Table Headers */}
-                <View style={styles.tableRowHeader}>
-                  <Text style={styles.tableCellHeader}>Category/Sub</Text>
-                  <Text style={styles.tableCellHeader}>Person/Account</Text>
-                  <Text style={styles.tableCellHeader}>Amount</Text>
-                </View>
-
-                {/* Table Rows */}
-                {filteredTxns.map(txn => {
-                  const categoryName =
-                    categories.find(cat => cat.id === txn.categoryId)?.name || txn.categoryId;
-                  const subcategoryName =
-                    subcategories.find(sub => sub.id === txn.subCategoryId)?.name || txn.subCategoryId;
-                  const pesonName =
-                    persons.find(per => per.id === txn.personId)?.name || '';
-                  const accountName =
-                    accounts.find(acc => acc.id === txn.accountId)?.paymentMode || '';
-                  return (
-                    <View key={txn.id} style={styles.tableRow}>
-                      <Text style={styles.tableCell}>{categoryName}/{subcategoryName}</Text>
-                      <Text style={styles.tableCell}>{pesonName}/{accountName}</Text>
-                      <Text
-                        style={[
-                          styles.tableCell,
-                          { color: txn.type === 'income' ? 'green' : 'red' },
-                        ]}
-                      >
-                        {showSensitiveData ? `₹ ${txn.amount}` : '₹ ****'}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-        )}
-      </View>
+      
     </ScrollView>
   );
 };

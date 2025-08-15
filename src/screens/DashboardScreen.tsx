@@ -212,7 +212,7 @@ const DashboardView: React.FC<Props> = ({
 
   // ---------------- UI ----------------
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 10 }}>
       {/* App header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -226,7 +226,7 @@ const DashboardView: React.FC<Props> = ({
             <Ionicons name="refresh" size={22} color="#e6f0ff" />
           </TouchableOpacity>
           <TouchableOpacity onPress={toggleSensitiveData} style={styles.iconButton}>
-            <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={22} color="#fff" />
+            <Ionicons name={showSensitiveData ? "eye" : "eye-off"} size={20} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -431,33 +431,28 @@ const DashboardView: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f6f8fc' },
-
-  headerIconBtn: {
-    marginLeft: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 8,
+  container: {
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)', // semi-transparent white
+    flex: 1,
   },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#0a66e4',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6, // For Android
-    // Optional: Use gradient background with expo-linear-gradient
-  },
+    header: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#0a66e4',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 6, // For Android
+  // Optional: Use gradient background with expo-linear-gradient
+},
   title: { fontSize: 22, fontWeight: '800', color: 'white', marginBottom: 8 },
 
   periodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
