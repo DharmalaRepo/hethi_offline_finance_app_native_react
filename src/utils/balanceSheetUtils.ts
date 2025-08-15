@@ -11,6 +11,7 @@ type Txn = {
   subCategoryId?: string;
   personId?: string;
   accountId?: string;
+  isPending?: boolean;   // true if transaction is pending
 };
 
 const pad2 = (n: number | string) => String(n).padStart(2, '0');
@@ -79,16 +80,32 @@ export function calculateSummary(
   let totalIncome = 0;
   let totalExpense = 0;
 
-  for (const t of txns ?? []) {
-    const kind = classifyType(t);
-    if (kind === 'income') totalIncome += Number(t.amount) || 0;
-    else if (kind === 'expense') totalExpense += Number(t.amount) || 0;
+   let pendingIncome = 0;
+  let pendingExpense = 0;
+
+  
+for (const t of txns ?? []) {
+  const amount = Number(t.amount) || 0;
+  const kind = classifyType(t);
+
+  if (kind === 'income') {
+    totalIncome += amount;
+    if (t.isPending) {
+      pendingIncome += amount;
+    }
+  } 
+  else if (kind === 'expense') {
+    totalExpense += amount;
+    if (t.isPending) {
+      pendingExpense += amount;
+    }
   }
+}
 
   // difference = Opening + Income - Expense - Closing
   const difference = openingBalance + totalIncome - totalExpense - closingBalance;
 
-  return { openingBalance, totalIncome, totalExpense, closingBalance, difference };
+  return { openingBalance, totalIncome, pendingIncome, totalExpense, pendingExpense, closingBalance, difference };
 }
 
 // (optional) used by your UI sections

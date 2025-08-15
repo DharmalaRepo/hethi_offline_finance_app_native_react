@@ -394,7 +394,7 @@ const LogTransactionForm = () => {
             />
           </View>
           {/* Date */}
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1.2, overflow: 'visible' }}>
             <View style={commonStyles.row}><Text style={commonStyles.label}>Date :
               {date ? date.toLocaleDateString() : 'Pick a date'}
             </Text>
@@ -456,16 +456,16 @@ const LogTransactionForm = () => {
                 />
               </TouchableOpacity>
 
-            </View>
+            </View>            
+          </View>         
+        </View>
 
-            <DateTimePickerModal
+        <DateTimePickerModal
               isVisible={showDatePicker}
               mode="date"
               onConfirm={handleDateConfirm}
               onCancel={() => setShowDatePicker(false)}
             />
-          </View>
-        </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8 }}>
           <Text style={commonStyles.label}>Notes / Smart suggestion</Text>

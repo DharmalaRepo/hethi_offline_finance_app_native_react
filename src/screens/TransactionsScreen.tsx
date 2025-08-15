@@ -166,7 +166,7 @@ export default function TransactionsScreen() {
       else expense += amt;
     }
     const savings = income - expense;
-    const count = filtered? filtered.length : 0;
+    const count = filtered ? filtered.length : 0;
     return { income, expense, savings, count };
   }, [filtered]); // or your dependencies
 
@@ -463,194 +463,176 @@ export default function TransactionsScreen() {
         </View>
       </Modal>
 
-
-
-      {/* Collapsible Panel */}
-     {showOptions && (
-  <View style={styles.optionsPanel}>
-    {/* ——— Search ——— */}
-    <View style={styles.optSection}>
-      <Text style={styles.optTitle}>Search</Text>
       <View style={styles.row}>
-        <TextInput
-          style={[styles.searchInput, styles.grow]}
-          placeholder="Search by amount, category..."
-          value={searchQuery}
-          onChangeText={(text) => {
-            setSearchQuery(text);
-            filterTransactions(text, dateRange.startDate, dateRange.endDate);
-          }}
-        />
-        {/* Columns lives next to search because it's a view option */}
-        {!bulkDeleteMode && !isCopyMode && (
-          <TouchableOpacity onPress={() => setShowColumnPicker(true)} style={styles.chipBtn}>
-            <Ionicons name="options-outline" size={16} color="#0C66E4" />
-            <Text style={styles.chipBtnText}>Columns</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {showColumnPicker && !bulkDeleteMode && !isCopyMode && (
-        <ColumnPickerCard
-          initial={visibleCols}
-          onApply={(next) => { setVisibleCols(next); setShowColumnPicker(false); }}
-          onCancel={() => setShowColumnPicker(false)}
-        />
-      )}
-    </View>
-
-    <View style={styles.optDivider} />
-
-    {/* ——— Month ——— */}
-    <View style={styles.optSection}>
-      <Text style={styles.optTitle}>Month</Text>
-      <View style={[styles.row, { justifyContent: 'center' }]}>
-        <TouchableOpacity onPress={() => updateMonth('prev')} style={styles.pillBtn}>
-          <Ionicons name="chevron-back" size={18} color="#0a66e4" />
-        </TouchableOpacity>
-
-        <View style={[styles.pillBtn, styles.monthLabelPill]}>
-          <Ionicons name="calendar" size={16} color="#0a66e4" />
-          <Text style={styles.filterText}>{monthLabel}</Text>
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={16} color="#64748b" />
+          <TextInput
+            style={styles.searchInputSm}
+            placeholder="Search by amount, category..."
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              filterTransactions(text, dateRange.startDate, dateRange.endDate);
+            }}
+            placeholderTextColor="#94a3b8"
+          />
         </View>
-
-        <TouchableOpacity onPress={() => updateMonth('next')} style={styles.pillBtn}>
+        {/* Options Toggle Row */}
+        <TouchableOpacity onPress={toggleOptions} style={styles.optionsBtn} activeOpacity={0.8}>
+          <Ionicons name="options" size={16} color="#0a66e4" />
+          <Text style={styles.optionsBtnText}>Options</Text>
           <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={
-              currentViewDate.getMonth() === new Date().getMonth() &&
-              currentViewDate.getFullYear() === new Date().getFullYear()
-                ? '#ccc'
-                : '#0a66e4'
-            }
+            name={showOptions ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color="#0a66e4"
+            style={{ marginLeft: 2 }}
           />
         </TouchableOpacity>
       </View>
-    </View>
 
-    <View style={styles.optDivider} />
 
-    {/* ——— Date Range ——— */}
-    <View style={styles.optSection}>
-      <Text style={styles.optTitle}>Date Range</Text>
-      <View style={[styles.rowWrap]}>
-        {/* Start */}
-        <TouchableOpacity style={styles.pillBtn} onPress={() => setShowStartPicker(true)}>
-          <Ionicons name="calendar-number" size={16} color="#00b894" />
-          <Text style={styles.filterText}>
-            {dateRange.startDate
-              ? `${dateRange.startDate.getDate().toString().padStart(2, '0')}-${(dateRange.startDate.getMonth() + 1).toString().padStart(2, '0')}-${dateRange.startDate.getFullYear()}`
-              : 'From'}
-          </Text>
-        </TouchableOpacity>
 
-        {/* End */}
-        <TouchableOpacity style={styles.pillBtn} onPress={() => setShowEndPicker(true)}>
-          <Ionicons name="calendar-number-outline" size={16} color="#fd79a8" />
-          <Text style={styles.filterText}>
-            {dateRange.endDate
-              ? `${dateRange.endDate.getDate().toString().padStart(2, '0')}-${(dateRange.endDate.getMonth() + 1).toString().padStart(2, '0')}-${dateRange.endDate.getFullYear()}`
-              : 'To'}
-          </Text>
-        </TouchableOpacity>
+      {/* Collapsible Panel */}
+      {showOptions && (
+        <View style={styles.optionsCompact}>
 
-        {/* Apply */}
-        <TouchableOpacity
-          style={[styles.pillIcon, { borderColor: '#d1fae5' }]}
-          onPress={() => filterTransactions(searchQuery, dateRange.startDate, dateRange.endDate)}
-        >
-          <Ionicons name="checkmark-circle" size={22} color="green" />
-        </TouchableOpacity>
+          
 
-        {/* Clear */}
-        <TouchableOpacity
-          style={[styles.pillIcon, { borderColor: '#fee2e2' }]}
-          onPress={() => {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            setCurrentViewDate(now);
-            setDateRange({ startDate: start, endDate: end });
-            filterTransactions(searchQuery, start, end);
-          }}
-        >
-          <Ionicons name="close-circle" size={22} color="red" />
-        </TouchableOpacity>
-      </View>
-    </View>
+          {/* Row 1 — Month nav + Date range + Apply/Clear */}
+          <View style={styles.optRowWrap}>
+            {/* Month nav */}
+            <TouchableOpacity onPress={() => updateMonth('prev')} style={styles.iconBtnSm}>
+              <Ionicons name="chevron-back" size={18} color="#0a66e4" />
+            </TouchableOpacity>
 
-    <View style={styles.optDivider} />
-
-    {/* ——— View & Bulk ——— */}
-    <View style={styles.optSection}>
-      <Text style={styles.optTitle}>Copy & Delete</Text>
-      <View style={styles.rowWrap}>
-        {/* Bulk Copy */}
-        {!bulkDeleteMode && !showColumnPicker && (
-          <TouchableOpacity
-            onPress={() => { setIsCopyMode(!isCopyMode); setSelectedIds([]); }}
-            style={styles.chipToggle}
-          >
-            <View style={styles.checkboxRow}>
-              <CheckBox
-                value={isCopyMode}
-                onValueChange={(v) => { setIsCopyMode(v); setSelectedIds([]); }}
-                tintColors={{ true: 'green', false: 'gray' }}
-              />
-              <Text style={isCopyMode ? styles.bulkCopyActive : styles.bulkCopyInactive}>
-                Copy with current Date
-              </Text>
+            <View style={[styles.pillSm, styles.pillNeutral]}>
+              <Ionicons name="calendar" size={14} color="#0a66e4" />
+              <Text style={styles.labelSm}>{monthLabel}</Text>
             </View>
-          </TouchableOpacity>
-        )}
 
-        {/* Bulk Delete */}
-        {!isCopyMode && !showColumnPicker && (
-          <TouchableOpacity
-            onPress={() => { setBulkDeleteMode(!bulkDeleteMode); setSelectedIds([]); }}
-            style={styles.chipToggle}
-          >
-            <View style={styles.checkboxRow}>
-              <CheckBox
-                value={bulkDeleteMode}
-                onValueChange={(v) => { setBulkDeleteMode(v); setSelectedIds([]); }}
-                tintColors={{ true: 'red', false: 'gray' }}
+            <TouchableOpacity onPress={() => updateMonth('next')} style={styles.iconBtnSm}>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={
+                  currentViewDate.getMonth() === new Date().getMonth() &&
+                    currentViewDate.getFullYear() === new Date().getFullYear()
+                    ? '#cbd5e1'
+                    : '#0a66e4'
+                }
               />
-              <Text style={bulkDeleteMode ? styles.bulkDeleteActive : styles.bulkDeleteInactive}>
-                Delete transactions
+            </TouchableOpacity>
+
+            <View style={styles.optRow}>
+            {!bulkDeleteMode && !isCopyMode && (
+              <TouchableOpacity onPress={() => setShowColumnPicker(true)} style={styles.chipSm}>
+                <Ionicons name="options-outline" size={16} color="#0C66E4" />
+                <Text style={styles.chipTextSm}>Columns</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {showColumnPicker && !bulkDeleteMode && !isCopyMode && (
+            <ColumnPickerCard
+              initial={visibleCols}
+              onApply={(next) => { setVisibleCols(next); setShowColumnPicker(false); }}
+              onCancel={() => setShowColumnPicker(false)}
+            />
+          )}
+
+            <View style={styles.dot} />
+
+            
+          </View>
+
+          {/* Row 2 — Date Range selection */}
+          <View style={styles.optRow}>
+            {/* Date range */}
+            <TouchableOpacity style={[styles.pillSm, styles.pillFrom]} onPress={() => setShowStartPicker(true)}>
+              <Ionicons name="calendar-number" size={14} color="#00b894" />
+              <Text style={styles.labelSm}>
+                {dateRange.startDate
+                  ? `${String(dateRange.startDate.getDate()).padStart(2, '0')}-${String(dateRange.startDate.getMonth() + 1).padStart(2, '0')}-${dateRange.startDate.getFullYear()}`
+                  : 'From'}
               </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  </View>
-)}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.pillSm, styles.pillTo]} onPress={() => setShowEndPicker(true)}>
+              <Ionicons name="calendar-number-outline" size={14} color="#fd79a8" />
+              <Text style={styles.labelSm}>
+                {dateRange.endDate
+                  ? `${String(dateRange.endDate.getDate()).padStart(2, '0')}-${String(dateRange.endDate.getMonth() + 1).padStart(2, '0')}-${dateRange.endDate.getFullYear()}`
+                  : 'To'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.iconBtnSm}
+              onPress={() => filterTransactions(searchQuery, dateRange.startDate, dateRange.endDate)}
+            >
+              <Ionicons name="checkmark-circle" size={20} color="green" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.iconBtnSm}
+              onPress={() => {
+                const now = new Date();
+                const start = new Date(now.getFullYear(), now.getMonth(), 1);
+                const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                setCurrentViewDate(now);
+                setDateRange({ startDate: start, endDate: end });
+                filterTransactions(searchQuery, start, end);
+              }}
+            >
+              <Ionicons name="close-circle" size={20} color="red" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Row 3 — Bulk copy / delete */}
+          <View style={styles.optRowWrap}>
+            {!bulkDeleteMode && !showColumnPicker && (
+              <TouchableOpacity
+                onPress={() => { setIsCopyMode(!isCopyMode); setSelectedIds([]); }}
+                style={[styles.pillSm, styles.pillCopy]}
+              >
+                <CheckBox
+                  value={isCopyMode}
+                  onValueChange={(v) => { setIsCopyMode(v); setSelectedIds([]); }}
+                  tintColors={{ true: 'green', false: 'gray' }}
+                />
+                <Text style={styles.labelSm}>Copy (current date)</Text>
+              </TouchableOpacity>
+            )}
+
+            {!isCopyMode && !showColumnPicker && (
+              <TouchableOpacity
+                onPress={() => { setBulkDeleteMode(!bulkDeleteMode); setSelectedIds([]); }}
+                style={[styles.pillSm, styles.pillDelete]}
+              >
+                <CheckBox
+                  value={bulkDeleteMode}
+                  onValueChange={(v) => { setBulkDeleteMode(v); setSelectedIds([]); }}
+                  tintColors={{ true: 'red', false: 'gray' }}
+                />
+                <Text style={styles.labelSm}>Delete transactions</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
 
       <View style={styles.headerRow}>
         <Text style={styles.subheading}>Transactions</Text>
+
         <Text style={styles.headerTotals}>
           <Text style={styles.tinySavings}> ({totals.count.toLocaleString('en-IN')})</Text>
           {'  '}
           <Text style={styles.tinyIncome}>+₹{totals.income.toLocaleString('en-IN')}</Text>
           {'  '}
           <Text style={styles.tinyExpense}>-₹{totals.expense.toLocaleString('en-IN')}</Text>
-           
+
         </Text>
-        {/* Options Toggle Row */}
-        <View style={styles.optionsHeaderRow}>
-          <TouchableOpacity onPress={toggleOptions} style={styles.optionsBtn} activeOpacity={0.8}>
-            <Ionicons name="options" size={16} color="#0a66e4" />
-            <Text style={styles.optionsBtnText}>Options</Text>
-            <Ionicons
-              name={showOptions ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color="#0a66e4"
-              style={{ marginLeft: 2 }}
-            />
-          </TouchableOpacity>
-        </View>
+
 
       </View>
 
@@ -663,7 +645,9 @@ export default function TransactionsScreen() {
             visibleCols={visibleCols}        // your state with amount fixed & 3–4 others
             sortColumn={sortColumn}
             sortOrder={sortOrder}
-            onSort={toggleSort}              // your existing sorter
+            isCopyMode={isCopyMode}
+            isBulkDeleteMode={bulkDeleteMode}   
+            onSort={toggleSort}          // your existing sorter
           />
         }
         renderItem={({ item, index }) => (
@@ -909,7 +893,95 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginTop: 10,
   },
+  optionsCompact: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginTop: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 8,
+  },
 
+  optRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+
+  optRowWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  /* Search compact */
+  searchWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    height: 38,
+  },
+  searchInputSm: {
+    flex: 1,
+    paddingVertical: 6,
+    color: '#0f172a',
+    fontSize: 13,
+  },
+
+  /* Small chips & pills */
+  chipSm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eef2ff',
+    borderColor: '#dbeafe',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    height: 36,
+  },
+  chipTextSm: { fontSize: 12, color: '#0C66E4', fontWeight: '700', marginLeft: 6 },
+
+  iconBtnSm: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  pillSm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    height: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  labelSm: { fontSize: 12, color: '#0f172a' },
+
+  pillNeutral: { backgroundColor: '#f8fafc', borderColor: '#e5e7eb' },
+  pillFrom: { backgroundColor: '#f0fdf4', borderColor: '#d1fae5' },
+  pillTo: { backgroundColor: '#fef2f2', borderColor: '#fee2e2' },
+  pillCopy: { backgroundColor: '#f0fdf4', borderColor: '#d1fae5' },
+  pillDelete: { backgroundColor: '#fef2f2', borderColor: '#fee2e2' },
+
+  dot: {
+    width: 4, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb',
+  },
   reloadIcon: {
     padding: 6,
     backgroundColor: '#e6f0ff',
@@ -1025,12 +1097,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     color: '#333',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
   },
   modalContainer: {
     flex: 1,
@@ -1193,7 +1259,7 @@ const styles = StyleSheet.create({
   },
   btnPrimaryText: { color: '#fff', fontWeight: '600' },
   // add to your Transactions screen stylesheet
-  headerTotals: { marginLeft: 0, fontSize: 12 , color: 'rgba(255,255,255,0.85)', fontWeight: '700' },
+  headerTotals: { marginLeft: 0, fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '700' },
   tinyIncome: { fontSize: 12, color: '#16a34a', fontWeight: '800' }, // green
   tinyExpense: { fontSize: 12, color: '#dc2626', fontWeight: '800' }, // red
   tinySavings: { fontSize: 12, color: '#f59e0b', fontWeight: '800' }, // amber
@@ -1244,64 +1310,64 @@ const styles = StyleSheet.create({
 
   chipBtnText: { fontSize: 12, color: 'black', marginLeft: 4 },
 
-  chipToggle: { marginLeft: 8 },optSection: {
-  marginBottom: 12,
-},
+  chipToggle: { marginLeft: 8 }, optSection: {
+    marginBottom: 12,
+  },
 
-optTitle: {
-  fontSize: 12,
-  fontWeight: '700',
-  color: '#64748b',
-  marginBottom: 6,
-  letterSpacing: 0.2,
-  textTransform: 'uppercase',
-},
+  optTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+    marginBottom: 6,
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
+  },
 
-optDivider: {
-  height: 1,
-  backgroundColor: '#eef2f7',
-  marginVertical: 6,
-},
+  optDivider: {
+    height: 1,
+    backgroundColor: '#eef2f7',
+    marginVertical: 6,
+  },
 
-row: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-rowWrap: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  columnGap: 8,
-  rowGap: 8,
-},
+  rowWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    columnGap: 8,
+    rowGap: 8,
+  },
 
-grow: { flex: 1 },
+  grow: { flex: 1 },
 
-pillBtn: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#f8fafc',
-  borderWidth: 1,
-  borderColor: '#e2e8f0',
-  borderRadius: 999,
-  paddingVertical: 8,
-  paddingHorizontal: 12,
-  marginRight: 8,
-},
+  pillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginRight: 8,
+  },
 
-monthLabelPill: {
-  paddingHorizontal: 14,
-  marginHorizontal: 6,
-},
+  monthLabelPill: {
+    paddingHorizontal: 14,
+    marginHorizontal: 6,
+  },
 
-pillIcon: {
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 40,
-  height: 40,
-  borderRadius: 999,
-  backgroundColor: '#fff',
-  borderWidth: 1,
-},
+  pillIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+  },
 });

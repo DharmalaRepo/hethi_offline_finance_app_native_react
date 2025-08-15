@@ -29,37 +29,10 @@ interface HeaderProps {
   visibleCols: Partial<VisibleCols>;        // same shape you already use
   sortColumn: SortKey;
   sortOrder: 'asc' | 'desc';
+  isCopyMode?: boolean;                    // for copy mode
+  isBulkDeleteMode?: boolean;              // for bulk delete mode
   onSort: (key: SortKey) => void;           // call your toggleSort from screen
 }
-
-export const TransactionListHeader: React.FC<HeaderProps> = ({
-  visibleCols,
-  sortColumn,
-  sortOrder,
-  onSort,
-}) => {
-  return (
-    <View style={styles.headerRow}>
-      {COLS.filter(c => !!visibleCols[c.key as keyof VisibleCols]) // show only selected
-        .map(c => (
-          <TouchableOpacity
-            key={c.sortKey}
-            onPress={() => onSort(c.sortKey)}
-            style={styles.headerCell}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.headerText}>
-              {c.label}
-              {sortColumn === c.sortKey ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      <Text style={styles.headerText}>EDIT / DEL</Text>
-    </View>
-
-  );
-};
-
 
 interface Props {
   transaction: Transaction;
@@ -76,6 +49,42 @@ interface Props {
   accountName?: string;
   visibleCols?: Partial<VisibleCols>;
 }
+
+export const TransactionListHeader: React.FC<HeaderProps> = ({
+  visibleCols,
+  sortColumn,
+  sortOrder,
+  isCopyMode,
+  isBulkDeleteMode,
+  onSort,
+}) => {
+  return (
+    <View style={styles.headerRow}>
+
+       {(isCopyMode || isBulkDeleteMode) && (
+          <Text style={styles.headerText}>SEL</Text>
+       )}
+      {COLS.filter(c => !!visibleCols[c.key as keyof VisibleCols]) // show only selected
+        .map(c => (
+          <TouchableOpacity
+            key={c.sortKey}
+            onPress={() => onSort(c.sortKey)}
+            style={styles.headerCell}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerText}>
+              {c.label}
+              {sortColumn === c.sortKey ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
+            </Text>
+          </TouchableOpacity>
+        ))}
+       {(!isCopyMode && !isBulkDeleteMode) && (
+          <Text style={styles.headerText}>EDIT / DEL</Text>
+       )}
+    </View>
+
+  );
+};
 
 const DEFAULT_VISIBLE: VisibleCols = {
   date: true,

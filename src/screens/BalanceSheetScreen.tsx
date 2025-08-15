@@ -362,7 +362,9 @@ const resolveSubCategoryName = (subCategoryId: string) => {
         <tbody>
           <tr><td class="tl">Opening Balance</td><td class="tr">${INR(balanceSummary.openingBalance)}</td></tr>
           <tr><td class="tl">Total Income</td><td class="tr green">+${INR(balanceSummary.totalIncome)}</td></tr>
+          <tr><td class="tl">Pending Income</td><td class="tr green">+${INR(balanceSummary.pendingIncome)}</td></tr>
           <tr><td class="tl">Total Expense</td><td class="tr red">-${INR(balanceSummary.totalExpense)}</td></tr>
+          <tr><td class="tl">Pending Expense</td><td class="tr red">-${INR(balanceSummary.pendingExpense)}</td></tr>
           <tr><td class="tl">Closing Balance</td><td class="tr">${INR(balanceSummary.closingBalance)}</td></tr>
           <tr><td class="tl muted">Untracked Difference</td><td class="tr muted">${INR(balanceSummary.difference)}</td></tr>
         </tbody>
@@ -535,7 +537,7 @@ const resolveSubCategoryName = (subCategoryId: string) => {
 
         <View style={styles.filtersRow}>
           {/* Period */}
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1.4, overflow: 'visible' }}>
             <Text style={styles.label}>Month: {periodLabel}</Text>
 
             <View style={styles.periodRow}>
@@ -578,10 +580,10 @@ const resolveSubCategoryName = (subCategoryId: string) => {
           </View>
 
           {/* Person */}
-          <View style={{ flex: 1, marginHorizontal: 8 }}>
+          <View style={{ flex: 0.8, marginHorizontal: 2 }}>
             <Text style={styles.label}>Person: {selectedPersonId? resolvePersonName(selectedPersonId) : 'ALL'}</Text>
             <View style={styles.pickerWrap}>
-              <Ionicons name="person" size={16} color="#1a3c70" style={{ marginRight: 6 }} />
+              <Ionicons name="person" size={16} color="#1a3c70" style={{ marginRight: 2 }} />
               <Picker
                 selectedValue={selectedPersonId}
                 onValueChange={(v) => setSelectedPersonId(v)}
@@ -596,7 +598,7 @@ const resolveSubCategoryName = (subCategoryId: string) => {
           </View>
 
           {/* Account */}
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 0.8, marginHorizontal: 2 }}>
             <Text style={styles.label}>Account: {selectedAccountId? resolveAccountName(selectedAccountId) : 'ALL'}</Text>
             <View
               style={[
