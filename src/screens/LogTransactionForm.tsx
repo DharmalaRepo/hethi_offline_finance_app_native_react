@@ -375,6 +375,18 @@ const LogTransactionForm = () => {
                 </Text>
 
             <View style={styles.dateRow}>
+
+              {/* Prev day */}
+              <TouchableOpacity
+                onPress={decrementDateByOne}
+                disabled={!date}
+                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityLabel="Previous day"
+              >
+                <Ionicons name="chevron-back-outline" size={20} color="#2d3436" />
+              </TouchableOpacity>
+
               {/* Date display / picker */}
               <TouchableOpacity
                 onPress={() => setShowDatePicker(true)}
@@ -382,6 +394,17 @@ const LogTransactionForm = () => {
                 disabled={dateLocked}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                 <Ionicons name="calendar-outline" size={18} color="#2d3436" />                
+              </TouchableOpacity>
+
+              {/* Next day */}
+              <TouchableOpacity
+                onPress={incrementDateByOne}
+                disabled={!date}
+                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityLabel="Next day"
+              >
+                <Ionicons name="chevron-forward-outline" size={20} color="#2d3436" />
               </TouchableOpacity>
 
               {/* Lock / Unlock */}
@@ -404,28 +427,8 @@ const LogTransactionForm = () => {
                 />
               </TouchableOpacity>
 
-              {/* Prev day */}
-              <TouchableOpacity
-                onPress={decrementDateByOne}
-                disabled={!date}
-                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                accessibilityLabel="Previous day"
-              >
-                <Ionicons name="chevron-back-outline" size={20} color="#2d3436" />
-              </TouchableOpacity>
-
-              {/* Next day */}
-              <TouchableOpacity
-                onPress={incrementDateByOne}
-                disabled={!date}
-                style={[styles.iconBtn, !date && styles.iconBtnDisabled]}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                accessibilityLabel="Next day"
-              >
-                <Ionicons name="chevron-forward-outline" size={20} color="#2d3436" />
-              </TouchableOpacity>
             </View>
+            
 
             <DateTimePickerModal
               isVisible={showDatePicker}
