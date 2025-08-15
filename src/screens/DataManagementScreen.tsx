@@ -18,11 +18,7 @@ import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { MonthlyClosingBalance } from '../models/MonthlyClosingBalance';
 import { useAppData } from '../context/AppDataProvider';
 
-
-
-
-export const loadPredefinedCategories = async () => {
-
+export async function loadPredefinedCategories(): Promise<Category[]> {
   const data: { name: string; subNames: string[] }[] = [
     { name: 'Utilities', subNames: ['Power', 'Internet', 'Mobile Rec', 'Gas', 'Dish', 'Maintenance', 'Milk', 'Maid', 'Car Clean', 'Prop Tax'] },
     { name: 'Shopping', subNames: ['CLOTHS'] },
@@ -45,34 +41,54 @@ export const loadPredefinedCategories = async () => {
     { name: 'Baby Care', subNames: ['Diapers', 'Food', 'Toys', 'Cloths'] },
   ];
 
-  const categories: Category[] = [];
-  
-
-  data.forEach(catData => {
+  const categories: Category[] = data.map(catData => {
     const catId = uuid.v4().toString();
-    const category: Category = {
+    const subcategories: SubCategory[] = catData.subNames.map(subName => ({
+      id: uuid.v4().toString(),
+      name: subName,
+      categoryId: catId,
+    }));
+
+    return {
       id: catId,
-      name: catData.name
+      name: catData.name,
+      subcategories,
     };
-    const subcategories: SubCategory[] = [];
-    catData.subNames.forEach(subName => {
-      const sub: SubCategory = {
-        id: uuid.v4().toString(),
-        name: subName,
-        categoryId: catId
-      };
-      subcategories.push(sub);
-    });
-    category.subcategories = subcategories;
-    categories.push(category);
   });
 
-  // Save them to storage
-  await addCategories(categories);
-  console.log('✅ Predefined categories and subcategories loaded');
-
+  return categories;
 }
 
+export async function importPredefinedCategories(
+  selection: Record<string, { catChecked: boolean; subs: Record<string, boolean> }>
+): Promise<void> {
+  const predefs = await loadPredefinedCategories();
+
+  for (const cat of predefs) {
+    const sel = selection[cat.name];
+    if (!sel) continue;
+
+    // Skip if nothing chosen: neither whole category nor any specific sub
+    const anySubChosen = Object.values(sel.subs || {}).some(Boolean);
+    if (!sel.catChecked && !anySubChosen) continue;
+
+    // Create the category in storage
+    const newCategoryId = uuid.v4().toString();
+    await addCategory({  name: cat.name, subcategories: [] });
+
+    // Create subcategories
+    const subsToImport =
+      sel.catChecked
+        ? (cat.subcategories || []).map(s => s.name) // all subs
+        : Object.entries(sel.subs || {})
+            .filter(([, checked]) => checked)
+            .map(([subName]) => subName);            // only checked subs
+
+    for (const subName of subsToImport) {
+      await addSubCategory(newCategoryId, { name: subName });
+    }
+  }
+}
 
   const CONFIRM_PHRASE = 'delete data';
 

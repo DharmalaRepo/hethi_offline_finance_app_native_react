@@ -21,6 +21,7 @@ import { MonthlyOpeningBalance } from '../models/MonthlyOpeningBalance';
 import { RecurringPayment } from '../models/RecurringPayment';
 import { useAppData } from '../context/AppDataProvider';
 import { useAppContext } from '../context/AppContext';
+import StarterCategoryImporter from '../components/StarterCategoryImporter';
 
 interface Props {
   accounts: Account[];
@@ -38,7 +39,7 @@ const DashboardView: React.FC<Props> = ({
 
   const { showSensitiveData, toggleSensitiveData } = useAppContext();
   const [logoModalVisible, setLogoModalVisible] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [showStarterModal, setShowStarterModal] = useState(false);
 
   const {
     persons,
@@ -305,6 +306,20 @@ const DashboardView: React.FC<Props> = ({
         </View>
       </View>
 
+      <View style={styles.card}>
+        <TouchableOpacity
+          onPress={() => setShowStarterModal(true)}
+          style={{ padding: 10, borderRadius: 10, backgroundColor: '#0a66e4' }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '700' }}>Load Starter Categories</Text>
+        </TouchableOpacity>
+
+        <StarterCategoryImporter
+          visible={showStarterModal}
+          onClose={() => setShowStarterModal(false)}
+        />
+      </View>
+
       {/* Mini Trend (last 6 months) */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Last 6 Months</Text>
@@ -379,7 +394,7 @@ const DashboardView: React.FC<Props> = ({
                   </Text>
                 </View>
                 <Text style={[styles.txAmt, { color: isIncome ? '#16a34a' : '#dc2626' }]}>
-                  {showSensitiveData ? `₹ ${fmt(t.amount || 0)}` : '₹ ****'} 
+                  {showSensitiveData ? `₹ ${fmt(t.amount || 0)}` : '₹ ****'}
                 </Text>
               </View>
             );
@@ -436,23 +451,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.98)', // semi-transparent white
     flex: 1,
   },
-    header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#0a66e4',
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  marginBottom: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 6, // For Android
-  // Optional: Use gradient background with expo-linear-gradient
-},
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0a66e4',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6, // For Android
+    // Optional: Use gradient background with expo-linear-gradient
+  },
   title: { fontSize: 22, fontWeight: '800', color: 'white', marginBottom: 8 },
 
   periodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
