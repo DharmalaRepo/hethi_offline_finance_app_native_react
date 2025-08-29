@@ -156,6 +156,22 @@ const LockScreen = () => {
 
       </View>
 
+      {/* FOOTER */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                © All rights reserved. <Text style={{ fontWeight: 'bold', color: 'grey' }}>HETHI SOLUTIONS.</Text>
+              </Text>
+              <Text style={styles.footerSubText}>
+                By Dharmala Shiva Prasad Reddy. Email for{' '}
+                <Text
+                  style={styles.emailLink}
+                  onPress={() => Linking.openURL('mailto:hethi.solutions@gmail.com')}
+                >
+                  queries/feedback
+                </Text>{' '}
+              </Text>
+            </View>
+
     </KeyboardAvoidingView>
 
 
@@ -233,4 +249,6 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
   },
+  emailLink: { color: '#1a3c70', textDecorationLine: 'underline', fontSize: 13 },
+  footerSubText: { fontSize: 13, color: 'grey' },
 });

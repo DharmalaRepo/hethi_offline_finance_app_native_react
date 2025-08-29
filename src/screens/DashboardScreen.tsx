@@ -320,6 +320,30 @@ const DashboardView: React.FC<Props> = ({
         />
       </View>
 
+      {/* Quick Actions */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Quick Actions</Text>
+        <View style={styles.buttonGrid}>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Add')}>
+            <Ionicons name="add-circle" size={16} color="#fff" />
+            <Text style={styles.buttonText}>Add Transaction</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Transactions')}>
+            <Ionicons name="list" size={16} color="#fff" />
+            <Text style={styles.buttonText}>Transactions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Persons')}>
+            <Ionicons name="people" size={16} color="#fff" />
+            <Text style={styles.buttonText}>Persons</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Categories')}>
+            <Ionicons name="pricetags" size={16} color="#fff" />
+            <Text style={styles.buttonText}>Categories</Text>
+          </TouchableOpacity>
+          
+        </View>
+      </View>
+
       {/* Mini Trend (last 6 months) */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Last 6 Months</Text>
@@ -419,28 +443,7 @@ const DashboardView: React.FC<Props> = ({
         )}
       </View>
 
-      {/* Quick Actions */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Quick Actions</Text>
-        <View style={styles.buttonGrid}>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Persons')}>
-            <Ionicons name="people" size={16} color="#fff" />
-            <Text style={styles.buttonText}>Persons</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Categories')}>
-            <Ionicons name="pricetags" size={16} color="#fff" />
-            <Text style={styles.buttonText}>Categories</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Add')}>
-            <Ionicons name="add-circle" size={16} color="#fff" />
-            <Text style={styles.buttonText}>Add Transaction</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Transactions')}>
-            <Ionicons name="list" size={16} color="#fff" />
-            <Text style={styles.buttonText}>Transactions</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      
     </ScrollView>
   );
 };

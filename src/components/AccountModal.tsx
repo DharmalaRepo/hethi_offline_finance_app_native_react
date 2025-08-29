@@ -98,9 +98,12 @@ const AccountModal: React.FC<Props> = ({
             </TouchableOpacity>
           </View>
 
+          <Text style={styles.title}>Existng Accounts</Text>
+
           <FlatList
             data={accounts}
             keyExtractor={(item) => item.id}
+            
             renderItem={({ item }) => (
               <View style={styles.listItem}>
                 <View style={{ flex: 1 }}>
@@ -132,7 +135,7 @@ const styles = StyleSheet.create({
   content: { backgroundColor: 'white', padding: 20, borderRadius: 10, width: '90%', maxHeight: '85%' },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, marginBottom: 10, padding: 8 },
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 20 },
   cancelButton: { backgroundColor: '#f44336', padding: 10, borderRadius: 6 },
   cancelText: { color: 'white', fontWeight: 'bold' },
   saveButton: { backgroundColor: '#007AFF', padding: 10, borderRadius: 6 },

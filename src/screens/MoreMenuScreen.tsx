@@ -70,11 +70,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f6fa',
   },
   content: {
-    padding: 16,
+    padding: 14,
     paddingBottom: 30,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     marginVertical: 8,
     color: '#222',
@@ -122,7 +122,7 @@ title: {
   subtext: {
     fontSize: 14,
     color: '#636e72',
-    marginBottom: 20,
+    marginBottom: 12,
     textAlign: 'center',
   },
   grid: {
@@ -133,11 +133,11 @@ title: {
   card: {
     width: CARD_WIDTH,
     backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 20,
+    borderRadius: 8,
+    paddingVertical: 10,
     alignItems: 'center',
-    marginBottom: 20,
-    elevation: 4, // for Android
+    marginBottom: 10,
+    elevation: 2, // for Android
     shadowColor: '#000', // iOS
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -147,8 +147,8 @@ title: {
   },
   iconContainer: {
     backgroundColor: '#0a66e4',
-    padding: 12,
-    borderRadius: 50,
+    padding: 6,
+    borderRadius: 20,
     marginBottom: 10,
   },
 });

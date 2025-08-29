@@ -230,8 +230,7 @@ const resolveSubCategoryName = (subCategoryId: string) => {
 
     // Only allow carry-forward FROM past months
     if (period.year > currentYear || (period.year === currentYear && period.month >= currentMonth)) {
-      Alert.alert('Not Allowed', 'You can only carry forward from past months.');
-      return;
+      Alert.alert('Not Allowed', 'You are copying to future month..');
     }
 
     const fromDate = new Date(period.year, period.month - 1, 1);
@@ -243,8 +242,7 @@ const resolveSubCategoryName = (subCategoryId: string) => {
       toDate.getFullYear() > currentYear ||
       (toDate.getFullYear() === currentYear && toDate.getMonth() + 1 > currentMonth)
     ) {
-      Alert.alert('Not Allowed', 'You can only carry forward up to the current month.');
-      return;
+      Alert.alert('Not Allowed', 'You are copying to future month.');
     }
 
     Alert.alert(
@@ -261,12 +259,7 @@ const resolveSubCategoryName = (subCategoryId: string) => {
   };
   const shiftPeriod = (delta: number) => {
     const target = new Date(period.year, period.month - 1 + delta, 1);
-    const today = new Date();
-    // block > current month
-    if (target.getFullYear() > today.getFullYear() ||
-      (target.getFullYear() === today.getFullYear() && target.getMonth() > today.getMonth())) {
-      return;
-    }
+    const today = new Date();    
     setPeriod({ year: target.getFullYear(), month: target.getMonth() + 1 });
   };
 

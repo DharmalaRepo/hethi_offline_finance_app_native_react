@@ -113,12 +113,6 @@ const LogTransactionForm = () => {
   }, [type]);
 
   useEffect(() => {
-    if (!useLastTransactiondata) {
-      resetForm();
-    }
-  }, [useLastTransactiondata]);
-
-  useEffect(() => {
     setSelectedAccount(null);
     setAccountSearch('');
     setShowAccountList(false);
@@ -146,8 +140,7 @@ const LogTransactionForm = () => {
     today.setHours(0, 0, 0, 0);
 
     if (selectedDate > today) {
-      showToast('error', 'Future date is not allowed');
-      return;
+      showToast('error', 'Future Date is selected.');
     }
     setDate(selectedDate);
   };
@@ -267,9 +260,9 @@ const LogTransactionForm = () => {
 
 
   const resetForm = () => {
+    setAmount('');
     if (!useLastTransactiondata) {
-      setType('expense');
-      setAmount('');
+      setType('expense');      
       if (!dateLocked) {
         setDate(new Date());
       }
@@ -581,8 +574,9 @@ const LogTransactionForm = () => {
           </View>
 
           {/* ===== Subcategory ===== */}
+          {category && (
           <View style={commonStyles.col}>
-            <Text style={commonStyles.label}>Subcategory</Text>
+            <Text style={commonStyles.label}>Sub Category</Text>
 
             <View style={commonStyles.inputWrap}>
               <TouchableOpacity
@@ -658,6 +652,7 @@ const LogTransactionForm = () => {
               )}
             </View>
           </View>
+          )}
         </View>
 
 
@@ -740,6 +735,7 @@ const LogTransactionForm = () => {
           </View>
 
           {/* ===== Account ===== */}
+          {selectedPerson?.name && (
           <View style={commonStyles.col}>
             <Text style={commonStyles.label}>Account / Paid From</Text>
 
@@ -814,6 +810,7 @@ const LogTransactionForm = () => {
               )}
             </View>
           </View>
+          )}
         </View>
 
         {/* Reversible Transaction Toggle */}

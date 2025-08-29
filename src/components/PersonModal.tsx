@@ -25,7 +25,12 @@ const PersonModal = ({
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
   useEffect(() => {
-    setName(defaultName || '');
+    if (isEdit) {
+      setName(defaultName || '');
+    } else {
+      setName
+    }
+
   }, [defaultName]);
 
 
@@ -42,13 +47,21 @@ const PersonModal = ({
             style={styles.input}
           />
 
-          <TouchableOpacity onPress={() => onSave(name)} style={styles.saveButton}>
-            <Text style={styles.saveText}>{isEdit ? 'Update' : 'Add'} Person</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-            <Text style={styles.cancelText}>Close</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+
+            <TouchableOpacity
+              onPress={onClose}
+              style={[styles.cancelButton, { flex: 1, marginLeft: 6 }]}
+            >
+              <Text style={styles.cancelText}>Close</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onSave(name)}
+              style={[styles.saveButton, { flex: 1, marginRight: 6 }]}
+            >
+              <Text style={styles.saveText}>{isEdit ? 'Update' : 'Add'} Person</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -62,7 +75,8 @@ const styles = StyleSheet.create({
   container: { backgroundColor: 'white', padding: 20, borderRadius: 10, width: '90%' },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   input: { borderWidth: 1, borderRadius: 6, padding: 10, marginBottom: 10 },
-  saveButton: { backgroundColor: '#007AFF', padding: 10, borderRadius: 6, alignItems: 'center' },
+  saveButton: { backgroundColor: '#007AFF', padding: 10, borderRadius: 6, alignItems: 'center', marginLeft: 6 },
+  cancelButton: { backgroundColor: '#ccc', padding: 10, borderRadius: 6, alignItems: 'center' },
   saveText: { color: 'white' },
   subHeading: { fontSize: 16, marginTop: 20, fontWeight: '600' },
   accountItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6 },
@@ -71,7 +85,6 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10 },
   addAccountButton: { marginTop: 10, padding: 8, backgroundColor: '#cdeaff', borderRadius: 6 },
   addAccountText: { textAlign: 'center', color: '#007AFF' },
-  cancelButton: { marginTop: 12, padding: 10, borderRadius: 6, backgroundColor: '#ccc' },
   cancelText: { textAlign: 'center' },
   emptyText: { fontStyle: 'italic', textAlign: 'center', marginTop: 6 },
 });

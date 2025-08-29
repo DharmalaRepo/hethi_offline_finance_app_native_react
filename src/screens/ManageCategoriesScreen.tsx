@@ -16,6 +16,7 @@ import { saveCategories, addCategory } from '../services/mockDataService';
 import SubcategoryModal from '../components/SubcategoryModal';
 import CategoryModal from '../components/CategoryModal';
 import { useAppData } from '../context/AppDataProvider';
+import StarterCategoryImporter from '../components/StarterCategoryImporter';
 
 
 const ManageCategoriesScreen = () => {
@@ -30,6 +31,7 @@ const ManageCategoriesScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [showSubModal, setShowSubModal] = useState(false);
   const [editingSubcategory, setEditingSubcategory] = useState<SubCategory | null>(null);
+    const [showStarterModal, setShowStarterModal] = useState(false);
 
   const {
     persons,
@@ -170,6 +172,19 @@ const ManageCategoriesScreen = () => {
             <Ionicons name="refresh" size={22} color="#e6f0ff" />
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View style={styles.addButton}>
+        <TouchableOpacity
+          onPress={() => setShowStarterModal(true)}
+        >
+          <Text style={styles.addButtonText}>Load Starter Categories</Text>
+        </TouchableOpacity>
+
+        <StarterCategoryImporter
+          visible={showStarterModal}
+          onClose={() => setShowStarterModal(false)}
+        />
       </View>
 
       <TextInput
@@ -384,6 +399,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+
+  card: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
   },
   rowButtons: {
     flexDirection: 'row',

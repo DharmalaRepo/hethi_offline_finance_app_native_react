@@ -97,6 +97,7 @@ const ManagePersonsScreen = () => {
   }
 
   const handleAddPerson = async (personName: string) => {
+    setSelectedPerson(null);
     const trimmedName = personName.trim();
     if (!trimmedName) return;
 
@@ -123,7 +124,9 @@ const ManagePersonsScreen = () => {
       setPersonName('');
       setSelectedPerson(null);
 
-      Alert.alert('person Saved', personName);
+      Alert.alert('Person Saved', personName);
+      personName = '';
+      setSelectedPerson(null);
       //setIsPersonModalVisible(false);
     } catch (error) {
       Alert.alert('Error', 'Failed to add person. Please try again.');
@@ -237,8 +240,11 @@ const ManagePersonsScreen = () => {
       <TouchableOpacity style={styles.addButton} onPress={() => setIsPersonModalVisible(true)}>
         <Text style={styles.addButtonText}>+ Add Person</Text>
       </TouchableOpacity>
+
       <FlatList
-        data={filteredPersons}
+        data={[...filteredPersons].sort((a, b) =>
+          a.name.localeCompare(b.name) // ascending by name
+        )}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View style={styles.categoryBox}>
@@ -259,11 +265,13 @@ const ManagePersonsScreen = () => {
 
             {(item.accounts?.length ?? 0) > 0 && (
               <View style={styles.subcategoryList}>
-                {(item.accounts || []).map((sub: Account) => (
-                  <Text key={sub.id} style={styles.subText}>
-                    • {sub.paymentMode}
-                  </Text>
-                ))}
+                {[...item.accounts]
+                  .sort((a, b) => a.paymentMode.localeCompare(b.paymentMode)) // optional: sort accounts too
+                  .map((sub: Account) => (
+                    <Text key={sub.id} style={styles.subText}>
+                      • {sub.paymentMode}
+                    </Text>
+                  ))}
               </View>
             )}
           </View>
